@@ -12,10 +12,12 @@
 #include "SteeringController.h"
 #include "LidarDump.h"
 #include "BluetoothRemote.h"
+#include "CameraSensor.h"
 
 // =====================
 // SYSTEM OBJECTS
 // =====================
+CameraSensor            camera;
 DisplayController       display;
 RotaryEncoderController encoder;
 LidarSensor             lidar;
@@ -119,6 +121,13 @@ void setup() {
     // ---------------------
     ui.begin(&display, &vsm, &speed, &steering, &nav, &lidarProc, &btRemote);
 
+    // ---------------------
+    // CAMERA (HuskyLens V2)
+    // SDA=9, SCL=10 via Wire1
+    // ---------------------
+    CameraConfig cc;
+    camera.begin(cc);
+
     Serial.println("[MAIN] SYSTEM READY");
 }
 
@@ -128,6 +137,20 @@ void setup() {
 void loop() {
 
     unsigned long start = millis();
+
+    // ---------------------
+    // CAMERA (HuskyLens V2)
+    // ---------------------
+    if (camera.update()) {
+        int n = camera.resultCount();
+        Serial.printf("[CAMERA] %d Objekt(e) erkannt:\n", n);
+        for (int i = 0; i < n; i++) {
+            CameraResult r = camera.getResult(i);
+            Serial.printf("  [%d] ID=%u  pos=(%d,%d)  size=%dx%d  pitch=%.1f  yaw=%.1f  name=%s\n",
+                i, r.id, r.xCenter, r.yCenter, r.width, r.height,
+                r.pitch, r.yaw, r.name);
+        }
+    }
 
     // ---------------------
     // DUMP (toggle mit 'd' über Serial)
