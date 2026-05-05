@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>LidarCar</title>
+<style>
+/* ═══════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════ */
+:root {
+  --bg:       #0d1117;
+  --surface:  #161b22;
+  --border:   #30363d;
+  --text:     #e6edf3;
+  --muted:    #8b949e;
+  --blue:     #58a6ff;
+  --blue-dim: #1f6feb;
+  --green:    #3fb950;
+  --red:      #f85149;
+  --radius:   14px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  gap: 12px;
+}
+
+/* ═══════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════ */
+header {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+header h1 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--blue);
+  white-space: nowrap;
+}
+
+.connect-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#connect-btn {
+  padding: 8px 16px;
+  background: #238636;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, opacity .15s;
+  white-space: nowrap;
+}
+#connect-btn.connected { background: #6e2c2c; }
+#connect-btn:active    { opacity: .75; }
+#connect-btn:disabled  { background: #333; cursor: default; }
+
+.dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: #484f58;
+  flex-shrink: 0;
+  transition: background .3s, box-shadow .3s;
+}
+.dot.on { background: var(--green); box-shadow: 0 0 7px #3fb95066; }
+
+#status-lbl { font-size: .78rem; color: var(--muted); white-space: nowrap; }
+
+/* no-BT banner */
+#no-bt {
+  display: none;
+  background: #2d1a1a;
+  border: 1px solid #6e2c2c;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: .82rem;
+  color: var(--red);
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════ */
+.card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.card-title {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+/* ═══════════════════════════════════════════
+   GAUGE
+═══════════════════════════════════════════ */
+#gauge-wrap {
+  position: relative;
+  width: 100%;
+}
+
+#gauge {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+
+#angle-lbl {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--blue);
+  margin-top: -4px;
+  letter-spacing: -.02em;
+}
+
+/* ═══════════════════════════════════════════
+   TELEMETRY ROW
+═══════════════════════════════════════════ */
+.telem-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.telem-cell {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.telem-cell .val {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  display: block;
+  color: var(--text);
+}
+
+.telem-cell .lbl {
+  font-size: .65rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  display: block;
+  margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════
+   DRIVE BUTTONS
+═══════════════════════════════════════════ */
+.drive-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.drive-btn {
+  padding: 18px 8px;
+  font-size: .95rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform .08s, opacity .12s;
+  user-select: none;
+}
+.drive-btn:active  { transform: scale(.93); }
+.drive-btn:disabled { opacity: .3; cursor: default; transform: none; }
+#btn-s { background: #238636; color: #fff; }
+#btn-x { background: #b62324; color: #fff; }
+
+/* ═══════════════════════════════════════════
+   D-PAD
+═══════════════════════════════════════════ */
+.dpad {
+  display: grid;
+  grid-template-areas:
+    ". f ."
+    "l c r";
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, auto);
+  gap: 8px;
+}
+
+.dpad-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 14px 6px;
+  border-radius: 12px;
+  border: 1.5px solid;
+  font-size: .72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform .08s, background .1s;
+  user-select: none;
+  line-height: 1.2;
+}
+.dpad-btn .ico { font-size: 1.25rem; line-height: 1; }
+.dpad-btn:active  { transform: scale(.9); }
+.dpad-btn:disabled { opacity: .3; cursor: default; transform: none; }
+
+.dir-btn {
+  background: #1a2740;
+  border-color: var(--blue-dim);
+  color: #79c0ff;
+}
+.dir-btn.active, .dir-btn:not(:disabled):active {
+  background: var(--blue-dim);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+.clear-btn {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--muted);
+}
+.clear-btn:not(:disabled):active { background: var(--border); }
+
+#btn-f { grid-area: f; }
+#btn-l { grid-area: l; }
+#btn-c { grid-area: c; }
+#btn-r { grid-area: r; }
+
+/* ═══════════════════════════════════════════
+   PARAMETERS
+═══════════════════════════════════════════ */
+.param-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+}
+.param-toggle:hover { color: var(--text); }
+.param-toggle .arrow { transition: transform .2s; }
+.param-toggle.open .arrow { transform: rotate(180deg); }
+
+.param-grid {
+  display: none;
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px 10px;
+}
+.param-grid.hidden { display: none; }
+
+.param-grid label {
+  font-size: .78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.param-grid input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+}
+.param-grid input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--blue);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+}
+
+.param-val {
+  font-size: .78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  min-width: 38px;
+  text-align: right;
+}
+
+.param-divider {
+  grid-column: 1 / -1;
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2px 0;
+}
+
+/* ═══════════════════════════════════════════
+   FOOTER NOTE
+═══════════════════════════════════════════ */
+.note {
+  font-size: .68rem;
+  color: #484f58;
+  text-align: center;
+  max-width: 480px;
+  line-height: 1.6;
+}
+.note strong { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ── Header ───────────────────────────────────── -->
+<header>
+  <h1>LidarCar</h1>
+  <div class="connect-row">
+    <button id="connect-btn" onclick="toggleConnect()">Verbinden</button>
+    <div class="dot" id="dot"></div>
+    <span id="status-lbl">Getrennt</span>
+  </div>
+</header>
+
+<div id="no-bt">
+  Web&nbsp;Bluetooth wird in diesem Browser nicht unterstützt.<br>
+  Bitte <strong>Chrome</strong> oder <strong>Edge</strong> verwenden und die Seite
+  über <strong>localhost</strong> oder <strong>HTTPS</strong> öffnen.
+</div>
+
+<!-- ── Telemetrie ────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Telemetrie</div>
+
+  <div id="gauge-wrap">
+    <svg id="gauge" viewBox="0 0 200 108">
+      <defs>
+        <!-- Gradient für den Bogen -->
+        <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stop-color="#388bfd" stop-opacity="0.25"/>
+          <stop offset="50%"  stop-color="#388bfd" stop-opacity="0.08"/>
+          <stop offset="100%" stop-color="#388bfd" stop-opacity="0.25"/>
+        </linearGradient>
+      </defs>
+
+      <!-- Hintergrund-Halbkreis -->
+      <path d="M 10,100 A 90,90 0 0,1 190,100"
+            stroke="#21262d" stroke-width="12" fill="none" stroke-linecap="round"/>
+
+      <!-- Farbiger Fortschritts-Bogen (wird per JS gesetzt) -->
+      <path id="arc-fill"
+            d="M 10,100 A 90,90 0 0,1 190,100"
+            stroke="#388bfd" stroke-width="12" fill="none"
+            stroke-linecap="round" opacity="0.18"/>
+
+      <!-- Mittel-Strich -->
+      <line x1="100" y1="100" x2="100" y2="14"
+            stroke="#30363d" stroke-width="1.5" stroke-dasharray="4 3"/>
+
+      <!-- Tick ±15° -->
+      <line x1="163" y1="41" x2="157" y2="46"
+            stroke="#30363d" stroke-width="1.5"/>
+      <line x1="37"  y1="41" x2="43"  y2="46"
+            stroke="#30363d" stroke-width="1.5"/>
+
+      <!-- Tick ±30° -->
+      <line x1="190" y1="100" x2="183" y2="100"
+            stroke="#30363d" stroke-width="1.5"/>
+      <line x1="10"  y1="100" x2="17"  y2="100"
+            stroke="#30363d" stroke-width="1.5"/>
+
+      <!-- Nadel -->
+      <line id="needle"
+            x1="100" y1="100" x2="100" y2="18"
+            stroke="#58a6ff" stroke-width="3"
+            stroke-linecap="round"/>
+
+      <!-- Mittelpunkt -->
+      <circle cx="100" cy="100" r="5" fill="#58a6ff"/>
+
+      <!-- Beschriftungen -->
+      <text x="1"   y="110" fill="#484f58" font-size="9" font-family="system-ui">–30°</text>
+      <text x="177" y="110" fill="#484f58" font-size="9" font-family="system-ui">+30°</text>
+      <text x="93"  y="11"  fill="#484f58" font-size="9" font-family="system-ui"> 0°</text>
+    </svg>
+  </div>
+
+  <div id="angle-lbl">0.0°</div>
+
+  <div class="telem-row">
+    <div class="telem-cell">
+      <span class="val" id="t-state">–</span>
+      <span class="lbl">Zustand</span>
+    </div>
+    <div class="telem-cell">
+      <span class="val" id="t-raw">–</span>
+      <span class="lbl">Roh-Pkt.</span>
+    </div>
+    <div class="telem-cell">
+      <span class="val" id="t-filt">–</span>
+      <span class="lbl">Gefiltert</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Fahrzeug ──────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Fahrzeug</div>
+  <div class="drive-row">
+    <button id="btn-s" class="drive-btn" onclick="send('S')" disabled>▶ START</button>
+    <button id="btn-x" class="drive-btn" onclick="send('X')" disabled>■ STOP</button>
+  </div>
+</div>
+
+<!-- ── Richtungsbias ─────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Richtungsbias</div>
+  <div class="dpad">
+    <button id="btn-f" class="dpad-btn dir-btn" onclick="sendBias('F')" disabled>
+      <span class="ico">▲</span>Gerade
+    </button>
+    <button id="btn-l" class="dpad-btn dir-btn" onclick="sendBias('L')" disabled>
+      <span class="ico">◀</span>Links
+    </button>
+    <button id="btn-c" class="dpad-btn clear-btn" onclick="send('C')" disabled>
+      <span class="ico">✕</span>Clear
+    </button>
+    <button id="btn-r" class="dpad-btn dir-btn" onclick="sendBias('R')" disabled>
+      <span class="ico">▶</span>Rechts
+    </button>
+  </div>
+</div>
+
+<!-- ── Parameter ────────────────────────────────── -->
+<div class="card">
+  <button class="param-toggle" id="param-toggle" onclick="toggleParams()">
+    <span>⚙ Parameter</span>
+    <span class="arrow">▼</span>
+  </button>
+
+  <div class="param-grid hidden" id="param-grid">
+
+    <!-- Geschwindigkeit -->
+    <label>Speed</label>
+    <input type="range" id="p-spd" min="0" max="255" step="1" value="150">
+    <span class="param-val" id="p-spd-v">150</span>
+
+    <hr class="param-divider">
+
+    <!-- FGM -->
+    <label>dmin (mm)</label>
+    <input type="range" id="p-dmin" min="300" max="4000" step="50" value="1500">
+    <span class="param-val" id="p-dmin-v">1500</span>
+
+    <label>Alpha</label>
+    <input type="range" id="p-alpha" min="0" max="1" step="0.05" value="0.4">
+    <span class="param-val" id="p-alpha-v">0.40</span>
+
+    <label>Beta</label>
+    <input type="range" id="p-beta" min="0" max="1" step="0.05" value="0.6">
+    <span class="param-val" id="p-beta-v">0.60</span>
+
+    <hr class="param-divider">
+
+    <!-- Bias -->
+    <label>Bias-Stärke</label>
+    <input type="range" id="p-bstr" min="0" max="1" step="0.05" value="0.4">
+    <span class="param-val" id="p-bstr-v">0.40</span>
+
+  </div>
+</div>
+
+<p class="note">
+  Benötigt <strong>Chrome / Edge</strong> &nbsp;|&nbsp;
+  Seite über <strong>localhost</strong> oder <strong>HTTPS</strong> öffnen<br>
+  Schnellstart: <code>python -m http.server 8080</code>
+  → <code>http://localhost:8080/control.html</code>
+</p>
+
+<!-- ══════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════ -->
+<script>
+// ── BLE UUIDs (Nordic UART Service) ─────────────────
+const SVC_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const RX_UUID  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // web → ESP32
+const TX_UUID  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // ESP32 → web
+
+let device  = null;
+let rxChar  = null;
+
+// ── Gauge-Konstanten ─────────────────────────────────
+const CX = 100, CY = 100, R_NEEDLE = 82, MAX_STEER = 30;
+
+// ── Web Bluetooth Verfügbarkeit ──────────────────────
+if (!navigator.bluetooth) {
+  document.getElementById('no-bt').style.display = 'block';
+  document.getElementById('connect-btn').disabled = true;
+}
+
+// ── Verbinden / Trennen ──────────────────────────────
+async function toggleConnect() {
+  if (device && device.gatt.connected) {
+    device.gatt.disconnect();
+  } else {
+    await doConnect();
+  }
+}
+
+async function doConnect() {
+  try {
+    setStatus('Suche…');
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: 'LidarCar' }],
+      optionalServices: [SVC_UUID],
+    });
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+
+    setStatus('Verbinde…');
+    const server  = await device.gatt.connect();
+    const service = await server.getPrimaryService(SVC_UUID);
+    rxChar        = await service.getCharacteristic(RX_UUID);
+
+    // Telemetrie-Notifications abonnieren
+    const txChar = await service.getCharacteristic(TX_UUID);
+    await txChar.startNotifications();
+    txChar.addEventListener('characteristicvaluechanged', onTelemetry);
+
+    setConnected(true);
+  } catch (err) {
+    if (err.name !== 'NotFoundError') setStatus('Fehler: ' + err.message);
+    else                              setStatus('Getrennt');
+    setConnected(false);
+  }
+}
+
+function onDisconnected() {
+  rxChar = null;
+  setConnected(false);
+  clearBiasBtn();
+}
+
+// ── UI-Zustand ───────────────────────────────────────
+function setConnected(on) {
+  document.getElementById('dot').className         = on ? 'dot on' : 'dot';
+  document.getElementById('status-lbl').textContent = on ? 'Verbunden' : 'Getrennt';
+  const btn = document.getElementById('connect-btn');
+  btn.textContent = on ? 'Trennen' : 'Verbinden';
+  btn.className   = on ? 'connected' : '';
+  document.querySelectorAll('.dpad-btn, .drive-btn')
+    .forEach(b => b.disabled = !on);
+}
+
+function setStatus(t) { document.getElementById('status-lbl').textContent = t; }
+
+// ── Telemetrie empfangen ─────────────────────────────
+function onTelemetry(evt) {
+  const text = new TextDecoder().decode(evt.target.value);
+  try {
+    const d = JSON.parse(text);
+    if (d.a !== undefined) updateGauge(parseFloat(d.a));
+    if (d.s !== undefined) document.getElementById('t-state').textContent = d.s;
+    if (d.rp !== undefined) document.getElementById('t-raw').textContent  = d.rp;
+    if (d.fp !== undefined) document.getElementById('t-filt').textContent = d.fp;
+  } catch (_) {}
+}
+
+// ── Gauge ────────────────────────────────────────────
+function updateGauge(steer) {
+  // Winkel auf ±MAX_STEER begrenzen
+  const clamped = Math.max(-MAX_STEER, Math.min(MAX_STEER, steer));
+
+  // Lenkwinkel → SVG-Winkel (0° rechts, 90° oben)
+  // steer=0 → 90°, steer=+MAX → 0°, steer=-MAX → 180°
+  const theta    = (90 - (clamped / MAX_STEER) * 90) * Math.PI / 180;
+  const nx       = (CX + R_NEEDLE * Math.cos(theta)).toFixed(2);
+  const ny       = (CY - R_NEEDLE * Math.sin(theta)).toFixed(2);
+
+  document.getElementById('needle').setAttribute('x2', nx);
+  document.getElementById('needle').setAttribute('y2', ny);
+  document.getElementById('angle-lbl').textContent =
+    (steer >= 0 ? '+' : '') + steer.toFixed(1) + '°';
+}
+
+// ── BLE senden ───────────────────────────────────────
+async function send(cmd) {
+  if (!rxChar) return;
+  try {
+    await rxChar.writeValueWithoutResponse(new TextEncoder().encode(cmd));
+  } catch (err) {
+    setStatus('Fehler: ' + err.message);
+  }
+}
+
+// ── Richtungsbias ────────────────────────────────────
+const BIAS_IDS = { F: 'btn-f', L: 'btn-l', R: 'btn-r' };
+
+function clearBiasBtn() {
+  Object.values(BIAS_IDS).forEach(id =>
+    document.getElementById(id).classList.remove('active'));
+}
+
+function sendBias(dir) {
+  const bstr = parseFloat(document.getElementById('p-bstr').value);
+  send(dir + '=' + bstr.toFixed(2));
+  clearBiasBtn();
+  const id = BIAS_IDS[dir];
+  if (id) document.getElementById(id).classList.add('active');
+}
+
+// 'C' auch visuell resetten
+const origSend = send;
+document.getElementById('btn-c').addEventListener('click', clearBiasBtn);
+
+// ── Parameter-Sektion ────────────────────────────────
+function toggleParams() {
+  const grid   = document.getElementById('param-grid');
+  const toggle = document.getElementById('param-toggle');
+  const hidden = grid.classList.toggle('hidden');
+  toggle.classList.toggle('open', !hidden);
+}
+
+// Slider-Setup: id, BLE-Key, Dezimalstellen, Debounce ms
+const PARAMS = [
+  { id: 'p-spd',   key: 'SPD',   dec: 0,  debounce: 200 },
+  { id: 'p-dmin',  key: 'DMIN',  dec: 0,  debounce: 300 },
+  { id: 'p-alpha', key: 'ALPHA', dec: 2,  debounce: 300 },
+  { id: 'p-beta',  key: 'BETA',  dec: 2,  debounce: 300 },
+  { id: 'p-bstr',  key: 'BSTR',  dec: 2,  debounce: 300 },
+];
+
+PARAMS.forEach(({ id, key, dec, debounce }) => {
+  const slider  = document.getElementById(id);
+  const display = document.getElementById(id + '-v');
+  let timer = null;
+
+  slider.addEventListener('input', () => {
+    const v = parseFloat(slider.value);
+    display.textContent = dec > 0 ? v.toFixed(dec) : String(v);
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      send(key + '=' + (dec > 0 ? v.toFixed(dec) : String(Math.round(v))));
+    }, debounce);
+  });
+});
+</script>
+</body>
+</html>
