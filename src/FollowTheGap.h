@@ -16,8 +16,8 @@
  *
  * Konvention:
  *   LiDAR 180° = vorne (geradeaus)  →  Lenkwinkel  0°
- *   LiDAR < 180° (z.B. 150°)         →  rechts     negativ
- *   LiDAR > 180° (z.B. 210°)         →  links      positiv
+ *   LiDAR < 180° (z.B. 150°)        →  links      negativ
+ *   LiDAR > 180° (z.B. 210°)        →  rechts     positiv
  */
 struct FGMConfig {
     // Schwellwert: Punkte mit distance > dmin zählen als "frei"

@@ -9,9 +9,9 @@
  * Output: PWM-Signal an Lenkservo
  *
  * Mapping:
- *   vehicleAngle  -maxAngle → servoPos  (90 - maxAngle)
- *   vehicleAngle   0        → servoPos  90  (Neutralstellung)
- *   vehicleAngle  +maxAngle → servoPos  (90 + maxAngle)
+ *   vehicleAngle  -maxAngle → servoPos  (90 + maxAngle)   voll links
+ *   vehicleAngle   0        → servoPos  90                geradeaus
+ *   vehicleAngle  +maxAngle → servoPos  (90 - maxAngle)   voll rechts
  *
  * Optional: Ratenfilter verhindert zu abrupte Lenkbewegungen.
  */

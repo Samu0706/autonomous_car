@@ -280,15 +280,15 @@ float FollowTheGap::computeTargetAngle(const Gap& gap) {
 
 // =============================
 // 5. WINKEL-UMRECHNUNG
-// LiDAR 180° = vorne → Lenkwinkel 0°
-// LiDAR < 180° = rechts → positiv
-// LiDAR > 180° = links  → negativ
+// LiDAR 180° = vorne  → Lenkwinkel   0°
+// LiDAR < 180° = links → Lenkwinkel negativ
+// LiDAR > 180° = rechts → Lenkwinkel positiv
 // Mapping der LiDAR-Range (90°..270°) auf ±maxSteerAngle
 // =============================
 float FollowTheGap::lidarAngleToSteering(float lidarAngle) const {
 
-    // Offset zu 180° (geradeaus): -90..+90
-    float delta = -lidarAngle + 180.0f;
+    // Offset zu 180° (geradeaus): rechts (+), links (-)
+    float delta = lidarAngle - 180.0f;
 
     // Linear auf ±maxSteerAngle mappen
     // Frontbereich ist ±90° → Skalierung: delta / 90 * maxSteerAngle
