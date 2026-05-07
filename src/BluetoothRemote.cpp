@@ -64,10 +64,37 @@ void BluetoothRemote::sendTelemetry(float steerAngle, const char* state,
     if (now - _lastTxMs < 200) return;
     _lastTxMs = now;
 
-    char buf[80];
+    char buf[512];
     int n = snprintf(buf, sizeof(buf),
-        "{\"a\":%.1f,\"s\":\"%s\",\"rp\":%d,\"fp\":%d}",
+        "{\"a\":%.1f,\"s\":\"%s\",\"rp\":%d,\"fp\":%d,\"g\":[",
         steerAngle, state, rawPts, filtPts);
+
+    // Gap-Daten anhängen (max 8 Lücken, jede als [sa,ea,ca,dcm,sc100])
+    if (_fgm) {
+        int gapCount = _fgm->getGapCount();
+        int limit    = gapCount < 8 ? gapCount : 8;
+        bool first   = true;
+        for (int i = 0; i < limit && n < (int)sizeof(buf) - 40; i++) {
+            FollowTheGap::GapInfo gi;
+            if (!_fgm->getGapInfo(i, gi)) continue;
+            if (!first) buf[n++] = ',';
+            first = false;
+            n += snprintf(buf + n, sizeof(buf) - n,
+                "[%d,%d,%d,%d,%d,%d]",
+                (int)gi.startAngle,
+                (int)gi.endAngle,
+                (int)gi.centerAngle,
+                (int)(gi.meanDepth / 10.0f),   // mm → cm
+                (int)(gi.score * 100.0f),        // 0.0–1.0 → 0–100
+                gi.isBest ? 1 : 0);
+        }
+    }
+
+    if (n < (int)sizeof(buf) - 2) {
+        buf[n++] = ']';
+        buf[n++] = '}';
+        buf[n]   = '\0';
+    }
 
     _txChar->setValue((uint8_t*)buf, (size_t)n);
     _txChar->notify();
@@ -150,6 +177,24 @@ void BluetoothRemote::handleCommand(const char* cmd) {
 
         } else if (strcmp(key, "BSTR") == 0) {
             _biasStrength = constrain(fval, 0.0f, 1.0f);
+
+        } else if (strcmp(key, "L") == 0) {
+            DirectionBias bias;
+            bias.left = constrain(fval, 0.0f, 1.0f);
+            _fgm->setDirectionBias(bias);
+            _biasStrength = bias.left;
+
+        } else if (strcmp(key, "R") == 0) {
+            DirectionBias bias;
+            bias.right = constrain(fval, 0.0f, 1.0f);
+            _fgm->setDirectionBias(bias);
+            _biasStrength = bias.right;
+
+        } else if (strcmp(key, "F") == 0) {
+            DirectionBias bias;
+            bias.straight = constrain(fval, 0.0f, 1.0f);
+            _fgm->setDirectionBias(bias);
+            _biasStrength = bias.straight;
         }
         return;
     }

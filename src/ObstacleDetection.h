@@ -6,7 +6,7 @@
 struct ObstacleConfig {
 
     // --- Schwellwerte ---
-    float limitMiddle         = 350.0f;   // mm – vorne Mitte
+    float limitMiddle         = 500.0f;   // mm – vorne Mitte
     float limitSide           = 190.0f;   // mm – vorne Seiten
     float limitReverseMiddle  = 250.0f;   // mm – hinten Mitte
     float limitReverseSide    = 190.0f;   // mm – hinten Seiten
@@ -35,7 +35,7 @@ struct ObstacleConfig {
     float rearSideRightRight =  70.0f;
 
     // --- Cluster: Mindestanzahl Punkte für echtes Hindernis ---
-    int counterLimit = 7; //Keine fehlerhaften Punkte erkennen, aber trotzdem Hindernisse >10cm ***kann ggf. reduziert werden -> testen***
+    int counterLimit = 1; //Keine fehlerhaften Punkte erkennen, aber trotzdem Hindernisse >10cm ***kann ggf. reduziert werden -> testen***
 };
 
 class ObstacleDetection {

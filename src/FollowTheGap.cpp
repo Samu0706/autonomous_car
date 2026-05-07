@@ -13,8 +13,9 @@ void FollowTheGap::begin(const FGMConfig& cfg) {
 // =============================
 bool FollowTheGap::process(const LidarPoint* points, int count) {
 
-    _validGap = false;
-    _gapCount = 0;
+    _validGap    = false;
+    _gapCount    = 0;
+    _bestGapIdx  = -1;
 
     _frontCount = extractFrontPoints(points, count);
 
@@ -282,7 +283,22 @@ int FollowTheGap::selectBestGap(int gapCount) {
         }
     }
 
+    _bestGapIdx = bestIdx;
     return bestIdx;
+}
+
+// =============================
+// GAP INFO GETTER
+// =============================
+bool FollowTheGap::getGapInfo(int idx, GapInfo& out) const {
+    if (idx < 0 || idx >= _gapCount) return false;
+    out.startAngle  = _frontPoints[_gaps[idx].startIdx].angle;
+    out.endAngle    = _frontPoints[_gaps[idx].endIdx].angle;
+    out.centerAngle = _gaps[idx].centerAngle;
+    out.meanDepth   = _gaps[idx].meanDepth;
+    out.score       = _gaps[idx].score;
+    out.isBest      = (idx == _bestGapIdx);
+    return true;
 }
 
 // =============================

@@ -338,6 +338,23 @@ header h1 {
 }
 
 /* ═══════════════════════════════════════════
+   GAP CHART
+═══════════════════════════════════════════ */
+#gap-chart {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+
+#gap-summary {
+  margin-top: 8px;
+  font-size: .75rem;
+  color: var(--muted);
+  text-align: center;
+  min-height: 1.4em;
+}
+
+/* ═══════════════════════════════════════════
    FOOTER NOTE
 ═══════════════════════════════════════════ */
 .note {
@@ -443,6 +460,29 @@ header h1 {
   </div>
 </div>
 
+<!-- ── Lücken ─────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Lücken (Follow-the-Gap)</div>
+
+  <svg id="gap-chart" viewBox="0 0 200 64">
+    <!-- Hintergrund Front-Sektor -->
+    <rect x="0" y="0" width="200" height="54" fill="#0d1117" rx="3"/>
+
+    <!-- Mittellinie 180° = geradeaus -->
+    <line x1="100" y1="0" x2="100" y2="54"
+          stroke="#30363d" stroke-width="1" stroke-dasharray="3 2"/>
+
+    <!-- Achsenbeschriftung -->
+    <text x="1"   y="62" fill="#484f58" font-size="7" font-family="system-ui">110°</text>
+    <text x="88"  y="62" fill="#484f58" font-size="7" font-family="system-ui">180°</text>
+    <text x="175" y="62" fill="#484f58" font-size="7" font-family="system-ui">250°</text>
+
+    <!-- Lücken-Balken (per JS gefüllt) -->
+  </svg>
+
+  <div id="gap-summary">– keine Verbindung –</div>
+</div>
+
 <!-- ── Fahrzeug ──────────────────────────────────── -->
 <div class="card">
   <div class="card-title">Fahrzeug</div>
@@ -512,9 +552,9 @@ header h1 {
 
 <p class="note">
   Benötigt <strong>Chrome / Edge</strong> &nbsp;|&nbsp;
-  Seite über <strong>localhost</strong> oder <strong>HTTPS</strong> öffnen<br>
-  Schnellstart: <code>python -m http.server 8080</code>
-  → <code>http://localhost:8080/control.html</code>
+  Seite über <strong>HTTPS</strong> öffnen (z.B. GitHub Pages)<br>
+  Lokal: <code>python -m http.server 8080</code>
+  → <code>http://localhost:8080/index.html</code>
 </p>
 
 <!-- ══════════════════════════════════════════════════
@@ -598,11 +638,80 @@ function onTelemetry(evt) {
   const text = new TextDecoder().decode(evt.target.value);
   try {
     const d = JSON.parse(text);
-    if (d.a !== undefined) updateGauge(parseFloat(d.a));
-    if (d.s !== undefined) document.getElementById('t-state').textContent = d.s;
-    if (d.rp !== undefined) document.getElementById('t-raw').textContent  = d.rp;
-    if (d.fp !== undefined) document.getElementById('t-filt').textContent = d.fp;
+    if (d.a  !== undefined) updateGauge(parseFloat(d.a));
+    if (d.s  !== undefined) document.getElementById('t-state').textContent = d.s;
+    if (d.rp !== undefined) document.getElementById('t-raw').textContent   = d.rp;
+    if (d.fp !== undefined) document.getElementById('t-filt').textContent  = d.fp;
+    updateGaps(d.g || []);
   } catch (_) {}
+}
+
+// ── Lücken-Visualisierung ────────────────────────────
+// Jede Lücke: [startAngle°, endAngle°, centerAngle°, tiefeCm, score0to100, isBest]
+const GAP_SVG_NS   = 'http://www.w3.org/2000/svg';
+const GAP_A_MIN    = 110;
+const GAP_A_RANGE  = 140;   // 110°..250°
+const GAP_SVG_W    = 200;
+const GAP_SVG_H    = 54;    // Zeichenbereich (ohne Achsenlabels)
+
+function updateGaps(gaps) {
+  const svg     = document.getElementById('gap-chart');
+  const summary = document.getElementById('gap-summary');
+
+  // Alte Balken entfernen
+  svg.querySelectorAll('.gap-bar').forEach(el => el.remove());
+
+  if (!gaps || gaps.length === 0) {
+    summary.textContent = 'Keine Lücken erkannt';
+    return;
+  }
+
+  let bestGap = null;
+  gaps.forEach(g => { if (g[5] === 1) bestGap = g; });
+
+  gaps.forEach(([sa, ea, ca, dcm, sc100, best]) => {
+    const x1   = (sa - GAP_A_MIN) / GAP_A_RANGE * GAP_SVG_W;
+    const x2   = (ea - GAP_A_MIN) / GAP_A_RANGE * GAP_SVG_W;
+    const w    = Math.max(3, x2 - x1);
+    const barH = Math.max(4, sc100 / 100 * (GAP_SVG_H - 8));
+
+    const rect = document.createElementNS(GAP_SVG_NS, 'rect');
+    rect.classList.add('gap-bar');
+    rect.setAttribute('x',      x1.toFixed(1));
+    rect.setAttribute('y',      (GAP_SVG_H - barH).toFixed(1));
+    rect.setAttribute('width',  w.toFixed(1));
+    rect.setAttribute('height', barH.toFixed(1));
+    rect.setAttribute('rx',     '2');
+    rect.setAttribute('fill',   best ? '#3fb950' : '#388bfd');
+    rect.setAttribute('opacity', best ? '1' : '0.5');
+    svg.appendChild(rect);
+
+    // Score-Label über der besten Lücke
+    if (best) {
+      const lbl = document.createElementNS(GAP_SVG_NS, 'text');
+      lbl.classList.add('gap-bar');
+      lbl.setAttribute('x',           ((x1 + x1 + w) / 2).toFixed(1));
+      lbl.setAttribute('y',           (GAP_SVG_H - barH - 3).toFixed(1));
+      lbl.setAttribute('fill',        '#3fb950');
+      lbl.setAttribute('font-size',   '7');
+      lbl.setAttribute('font-family', 'system-ui');
+      lbl.setAttribute('text-anchor', 'middle');
+      lbl.textContent = (sc100 / 100).toFixed(2);
+      svg.appendChild(lbl);
+    }
+  });
+
+  // Zusammenfassung
+  if (bestGap) {
+    const [, , ca, dcm, sc100] = bestGap;
+    const dir = ca < 175 ? '◀ Links' : ca > 185 ? 'Rechts ▶' : '▲ Gerade';
+    summary.innerHTML =
+      `<b style="color:var(--green)">${gaps.length}&nbsp;Lücke${gaps.length > 1 ? 'n' : ''}</b>` +
+      `&nbsp;|&nbsp;Beste:&nbsp;<b style="color:var(--text)">${dir}</b>` +
+      `&nbsp;${ca}°&nbsp;·&nbsp;${dcm}&nbsp;cm&nbsp;·&nbsp;Score&nbsp;${(sc100 / 100).toFixed(2)}`;
+  } else {
+    summary.textContent = `${gaps.length} Lücke${gaps.length > 1 ? 'n' : ''}`;
+  }
 }
 
 // ── Gauge ────────────────────────────────────────────

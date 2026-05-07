@@ -97,6 +97,17 @@ public:
     float getSteeringAngle() const { return _steeringAngle; }
     bool  hasValidGap()      const { return _validGap; }
     int   getGapCount()      const { return _gapCount; }
+    int   getBestGapIdx()    const { return _bestGapIdx; }
+
+    struct GapInfo {
+        float startAngle;
+        float endAngle;
+        float centerAngle;
+        float meanDepth;    // mm
+        float score;
+        bool  isBest;
+    };
+    bool getGapInfo(int idx, GapInfo& out) const;
 
 private:
     // Interne Struktur für eine erkannte Lücke
@@ -142,4 +153,5 @@ private:
 
     float _steeringAngle = 0.0f;
     bool  _validGap      = false;
+    int   _bestGapIdx    = -1;
 };
