@@ -115,20 +115,23 @@ void VehicleStateMachine::transitionTo(VehicleState newState) {
             _speed->forward();
             break;
 
-        case VehicleState::WAIT_BEFORE_REVERSE:
-            // Motor steht, Lenkwinkel für kommendes Reversing vorwählen
-            // damit der Servo Zeit hat zu reagieren bevor Motor anläuft
+        case VehicleState::WAIT_BEFORE_REVERSE: {
+            // Letzten Vorwärts-Lenkwinkel auslesen und invertieren
+            float lastAngle = _steering->getCurrentAngle();
+            if (fabsf(lastAngle) < 5.0f) {
+                // War geradeaus → Fallback, alterniert bei Folgemanövern
+                _reverseSteerAngle  = _fallbackReverseDir * 20.0f;
+                _fallbackReverseDir = -_fallbackReverseDir;
+            } else {
+                _reverseSteerAngle = -lastAngle;
+            }
             _speed->stop();
             _steering->setAngle(_reverseSteerAngle);
+            Serial.printf("[VSM] reverseAngle=%.1f\n", _reverseSteerAngle);
             break;
+        }
 
         case VehicleState::REVERSING:
-            // Lenkwinkel bereits gesetzt in WAIT_BEFORE_REVERSE –
-            // hier nochmals setzen falls direkter Übergang ohne Wartezeit
-            _reverseCount++;
-            if (_reverseCount % 3 == 0) {
-                _reverseSteerAngle = -_reverseSteerAngle;
-            }
             _steering->setAngle(_reverseSteerAngle);
             _speed->reverse();
             break;

@@ -25,10 +25,8 @@ bool FollowTheGap::process(const LidarPoint* points, int count) {
         return false;
     }
 
-    // --- NEU: Disparity Extender vor der Lückensuche ---
-    if (_cfg.disparityEnabled) {
-        applyDisparityExtender();
-    }
+    if (_cfg.disparityEnabled)  applyDisparityExtender();
+    if (_cfg.nearFieldEnabled)  applyNearFieldExtender();
 
     _gapCount = findGaps();
 
@@ -149,6 +147,41 @@ void FollowTheGap::applyDisparityExtender() {
                 _frontPoints[j].distance = nearerD;
             }
             j += dir;
+        }
+    }
+}
+
+// =============================
+// 1c. NAHBEREICH-EXTENDER
+// Für jeden Punkt näher als nearFieldThreshold wird ein Winkelbereich
+// (Blasendurchmesser nearFieldInflate) auf seine Distanz herabgesetzt.
+// Erkennung auf Snapshot (srcDist), Schreiben in _frontPoints – kein Kaskaden-Effekt.
+// =============================
+void FollowTheGap::applyNearFieldExtender() {
+
+    if (_frontCount < 1) return;
+
+    float srcDist[MAX_FRONT_POINTS];
+    for (int i = 0; i < _frontCount; i++) {
+        srcDist[i] = _frontPoints[i].distance;
+    }
+
+    for (int i = 0; i < _frontCount; i++) {
+        float d = srcDist[i];
+        if (d <= 0.0f || d > _cfg.nearFieldThreshold) continue;
+
+        float ratio = (_cfg.nearFieldInflate * 0.5f) / d;
+        if (ratio > 0.99f) ratio = 0.99f;
+        float halfAngleDeg = asinf(ratio) * 180.0f / (float)M_PI;
+        float baseAngle = _frontPoints[i].angle;
+
+        for (int j = 0; j < _frontCount; j++) {
+            float delta = _frontPoints[j].angle - baseAngle;
+            if (delta < 0.0f) delta = -delta;
+            if (delta > halfAngleDeg) continue;
+            if (_frontPoints[j].distance > d) {
+                _frontPoints[j].distance = d;
+            }
         }
     }
 }

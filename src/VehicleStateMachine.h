@@ -22,7 +22,7 @@ enum class VehicleState {
 };
 
 struct StateMachineConfig {
-    uint32_t reverseTime_ms          = 1200;    // Rückwärtsfahrtdauer
+    uint32_t reverseTime_ms          = 2000;    // Rückwärtsfahrtdauer
     uint32_t holdOffTime_ms          = 1500;   // Emergency Reset-Wartezeit
     uint32_t waitBeforeReverse_ms    = 2000;   // Warten vor Rückwärts
     uint32_t waitBeforeEmergency_ms  = 2000;   // Warten vor Emergency
@@ -61,7 +61,7 @@ private:
     VehicleState       _state = VehicleState::IDLE;
     SteeringController* _steering = nullptr;
 
-    unsigned long _stateEnteredAt_ms = 0;
-    int           _reverseCount      = 0;       // Zählt Reversing-Vorgänge
-    float         _reverseSteerAngle = 30.0f;   // Wechselt Vorzeichen
+    unsigned long _stateEnteredAt_ms  = 0;
+    float         _reverseSteerAngle  = 20.0f;  // Lenkwinkel für aktuelle Rückwärtsfahrt
+    float         _fallbackReverseDir = 1.0f;   // Alterniert wenn letzter Winkel ≈ 0
 };

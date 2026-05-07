@@ -47,6 +47,11 @@ struct FGMConfig {
     float disparityInflate    = 300.0f;    // Sicherheitsbreite in mm (20cm Auto + 15cm/Seite Puffer)
     float disparityThreshold  = 000.0f;    // Mindest-Distanzsprung in mm
     float disparityMaxDist    = 4000.0f;   // Disparities jenseits davon ignorieren
+
+    // Nahbereich-Extender: Blasen um sehr nahe Punkte (unabhängig von Tiefensprüngen)
+    bool  nearFieldEnabled   = true;
+    float nearFieldThreshold = 500.0f;    // mm – Punkte näher als das bekommen Blase
+    float nearFieldInflate   = 200.0f;    // mm – Blasendurchmesser (20 cm)
 };
 
 /**
@@ -110,9 +115,8 @@ private:
     // Frontpunkte extrahieren und nach Winkel sortieren
     int extractFrontPoints(const LidarPoint* points, int count);
 
-    // --- NEU: Disparity Extender ---
-    // Bläht Hindernis-Kanten in _frontPoints auf, in-place.
     void applyDisparityExtender();
+    void applyNearFieldExtender();
 
     // Lücken finden (zusammenhängende Punkte mit d > dmin)
     int findGaps();
