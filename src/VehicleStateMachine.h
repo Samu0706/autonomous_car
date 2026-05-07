@@ -62,6 +62,14 @@ private:
     SteeringController* _steering = nullptr;
 
     unsigned long _stateEnteredAt_ms  = 0;
-    float         _reverseSteerAngle  = 20.0f;  // Lenkwinkel für aktuelle Rückwärtsfahrt
-    float         _fallbackReverseDir = 1.0f;   // Alterniert wenn letzter Winkel ≈ 0
+    float         _reverseSteerAngle  = 20.0f;
+    float         _fallbackReverseDir = 1.0f;
+
+    // Ringpuffer: Lenkwinkel während DRIVING aufzeichnen
+    static constexpr int STEER_HISTORY = 20;
+    float _steerHistory[STEER_HISTORY] = {};
+    int   _steerHistIdx  = 0;
+    int   _steerHistCount = 0;
+
+    float computeSteerMedian() const;
 };

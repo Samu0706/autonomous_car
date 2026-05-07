@@ -41,6 +41,11 @@ void VehicleStateMachine::update(bool obstacleAhead, bool obstacleRear) {
 
         // -------------------------
         case VehicleState::DRIVING:
+            // Lenkwinkel laufend aufzeichnen
+            _steerHistory[_steerHistIdx] = _steering->getCurrentAngle();
+            _steerHistIdx = (_steerHistIdx + 1) % STEER_HISTORY;
+            if (_steerHistCount < STEER_HISTORY) _steerHistCount++;
+
             if (obstacleAhead) {
                 _speed->stop();
                 transitionTo(VehicleState::WAIT_BEFORE_REVERSE);
@@ -110,24 +115,25 @@ void VehicleStateMachine::transitionTo(VehicleState newState) {
             break;
 
         case VehicleState::DRIVING:
-            // Lenkung wieder geradeaus – FGM / ObstacleDetection übernimmt ab hier
             _steering->center();
             _speed->forward();
+            // Puffer zurücksetzen – neue Fahrt, neue Historie
+            _steerHistIdx   = 0;
+            _steerHistCount = 0;
             break;
 
         case VehicleState::WAIT_BEFORE_REVERSE: {
-            // Letzten Vorwärts-Lenkwinkel auslesen und invertieren
-            float lastAngle = _steering->getCurrentAngle();
-            if (fabsf(lastAngle) < 5.0f) {
-                // War geradeaus → Fallback, alterniert bei Folgemanövern
+            float median = computeSteerMedian();
+            if (fabsf(median) < 5.0f) {
                 _reverseSteerAngle  = _fallbackReverseDir * 20.0f;
                 _fallbackReverseDir = -_fallbackReverseDir;
             } else {
-                _reverseSteerAngle = -lastAngle;
+                _reverseSteerAngle = -median;
             }
             _speed->stop();
             _steering->setAngle(_reverseSteerAngle);
-            Serial.printf("[VSM] reverseAngle=%.1f\n", _reverseSteerAngle);
+            Serial.printf("[VSM] reverseAngle=%.1f (median von %d Winkeln)\n",
+                          _reverseSteerAngle, _steerHistCount);
             break;
         }
 
@@ -147,6 +153,28 @@ void VehicleStateMachine::transitionTo(VehicleState newState) {
             _steering->center();
             break;
     }
+}
+
+// =============================
+// MEDIAN DER LENKWINKEL-HISTORIE
+// =============================
+float VehicleStateMachine::computeSteerMedian() const {
+    if (_steerHistCount == 0) return 0.0f;
+
+    float sorted[STEER_HISTORY];
+    memcpy(sorted, _steerHistory, _steerHistCount * sizeof(float));
+
+    // Insertion Sort – für n≤20 ausreichend schnell
+    for (int i = 1; i < _steerHistCount; i++) {
+        float key = sorted[i];
+        int j = i - 1;
+        while (j >= 0 && sorted[j] > key) {
+            sorted[j + 1] = sorted[j];
+            j--;
+        }
+        sorted[j + 1] = key;
+    }
+    return sorted[_steerHistCount / 2];
 }
 
 // =============================
