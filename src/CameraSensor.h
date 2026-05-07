@@ -5,9 +5,9 @@
 #include "CameraProcessing.h"
 
 struct CameraConfig {
-    uint8_t sdaPin    = 9;
-    uint8_t sclPin    = 10;
-    uint8_t algorithm = ALGORITHM_OBJECT_RECOGNITION;
+    uint8_t sdaPin    = 9; //Gelbes kabel
+    uint8_t sclPin    = 10; //Oranges Kabel
+    eAlgorithm_t algorithm = ALGORITHM_OBJECT_RECOGNITION;
 };
 
 class CameraSensor {

@@ -1,22 +1,33 @@
 #include "CameraSensor.h"
 
+// Eigener HardwareSerial-Port für HuskyLens (Serial1 ist frei)
+static HardwareSerial huskylensSerial(1);
+
 bool CameraSensor::begin(const CameraConfig& cfg) {
     _cfg = cfg;
 
-    // Zweiter I2C-Bus (Wire ist durch das Display belegt auf SDA=4/SCL=5)
-    Wire1.begin(cfg.sdaPin, cfg.sclPin);
+    huskylensSerial.begin(cfg.baudRate, SERIAL_8N1, cfg.rxPin, cfg.txPin);
 
-    if (!_huskylens.begin(Wire1)) {
-        Serial.println("[CAMERA] Init fehlgeschlagen – Verkabelung und I2C-Protokoll prüfen");
-        Serial.println("[CAMERA]   green >> SDA (9), blue >> SCL (10)");
-        Serial.println("[CAMERA]   HuskyLens: System Settings >> Protocol Type >> I2C");
-        return false;
+    // HuskyLens hat eigenes OS – braucht bei separater Stromversorgung bis zu 5s zum Booten.
+    // Retry-Schleife für max. 30 Sekunden.
+    Serial.println("[CAMERA] Warte auf HuskyLens V2 via UART (max. 30s) ...");
+    uint32_t deadline = millis() + 30000;
+    uint8_t attempt = 0;
+    while (millis() < deadline) {
+        if (_huskylens.begin(huskylensSerial)) {
+            Serial.printf("[CAMERA] HuskyLens V2 bereit (nach %d Versuchen)\n", attempt + 1);
+            _huskylens.switchAlgorithm(cfg.algorithm);
+            _initialized = true;
+            return true;
+        }
+        attempt++;
+        Serial.printf("[CAMERA]   Versuch %d fehlgeschlagen, warte...\n", attempt);
+        delay(500);
     }
 
-    _huskylens.switchAlgorithm(cfg.algorithm);
-    _initialized = true;
-    Serial.println("[CAMERA] HuskyLens V2 bereit");
-    return true;
+    Serial.println("[CAMERA] FEHLGESCHLAGEN – HuskyLens antwortet nicht nach 30s");
+    Serial.println("[CAMERA]   Prüfe: GND verbunden? TX(grün)→Pin9, RX(blau)→Pin10? UART-Modus gesetzt?");
+    return false;
 }
 
 bool CameraSensor::update() {
@@ -39,7 +50,7 @@ bool CameraSensor::update() {
         r.height  = raw->height;
         r.pitch   = raw->pitch;
         r.yaw     = raw->yaw;
-        strncpy(r.name, raw->name, sizeof(r.name) - 1);
+        strncpy(r.name, raw->name.c_str(), sizeof(r.name) - 1);
         r.name[sizeof(r.name) - 1] = '\0';
     }
 

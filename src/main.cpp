@@ -15,6 +15,55 @@
 #include "CameraSensor.h"
 
 // =====================
+// I2C SCANNER
+// =====================
+struct KnownI2CDevice { uint8_t addr; const char* name; };
+
+static const KnownI2CDevice KNOWN_DEVICES[] = {
+    { 0x3C, "OLED Display (SH1106/SSD1306)" },
+    { 0x3D, "OLED Display (SH1106/SSD1306, alt. Adresse)" },
+    { 0x32, "HuskyLens V1" },
+    { 0x50, "HuskyLens V2" },
+    { 0x48, "ADS1115/ADS1015 ADC" },
+    { 0x68, "MPU-6050 IMU / DS1307 RTC" },
+    { 0x69, "MPU-6050 IMU (alt. Adresse)" },
+    { 0x76, "BME/BMP280 Drucksensor" },
+    { 0x77, "BME/BMP280 Drucksensor (alt. Adresse)" },
+    { 0x1E, "HMC5883L Kompass" },
+    { 0x29, "VL53L0X ToF Sensor" },
+    { 0x70, "TCA9548A I2C Multiplexer" },
+};
+
+static const char* lookupDevice(uint8_t addr) {
+    for (auto& d : KNOWN_DEVICES) {
+        if (d.addr == addr) return d.name;
+    }
+    return "Unbekanntes Gerät";
+}
+
+static void scanI2CBus(TwoWire& wire, const char* busName, uint8_t sda, uint8_t scl) {
+    wire.begin(sda, scl);
+    Serial.printf("\n[I2C-SCAN] Bus: %s  (SDA=%d, SCL=%d)\n", busName, sda, scl);
+    Serial.println("[I2C-SCAN] ----------------------------------------");
+    int found = 0;
+    for (uint8_t addr = 1; addr < 127; addr++) {
+        // 0x50 (HuskyLens V2) nicht per Scan ansprechen – stört das Protokoll
+        if (addr == 0x50) {
+            Serial.printf("[I2C-SCAN]   0x%02X  ->  %s (Scan übersprungen)\n", addr, lookupDevice(addr));
+            found++;
+            continue;
+        }
+        wire.beginTransmission(addr);
+        if (wire.endTransmission() == 0) {
+            Serial.printf("[I2C-SCAN]   0x%02X  ->  %s\n", addr, lookupDevice(addr));
+            found++;
+        }
+    }
+    if (found == 0) Serial.println("[I2C-SCAN]   Keine Geräte gefunden.");
+    Serial.printf("[I2C-SCAN] %d Gerät(e) gefunden.\n", found);
+}
+
+// =====================
 // SYSTEM OBJECTS
 // =====================
 CameraSensor            camera;
@@ -37,6 +86,23 @@ BluetoothRemote         btRemote;
 // =====================
 void setup() {
     Serial.begin(115200);
+    delay(2000); // warten bis Serial Monitor geöffnet ist
+
+    Serial.println("\n========================================");
+    Serial.println("         SYSTEM START");
+    Serial.println("========================================");
+
+    // ---------------------
+    // I2C SCAN (Diagnose beim Start – nur Display-Bus)
+    // ---------------------
+    scanI2CBus(Wire, "Wire (Display)", 4, 5);
+
+    // ---------------------
+    // CAMERA (HuskyLens V2) – direkt nach Scan
+    // SDA=9, SCL=10 via Wire1
+    // ---------------------
+    CameraConfig cc;
+    camera.begin(cc);
 
     // ---------------------
     // DISPLAY
@@ -120,13 +186,6 @@ void setup() {
     // UI
     // ---------------------
     ui.begin(&display, &vsm, &speed, &steering, &nav, &lidarProc, &btRemote);
-
-    // ---------------------
-    // CAMERA (HuskyLens V2)
-    // SDA=9, SCL=10 via Wire1
-    // ---------------------
-    CameraConfig cc;
-    camera.begin(cc);
 
     Serial.println("[MAIN] SYSTEM READY");
 }
