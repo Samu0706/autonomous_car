@@ -355,6 +355,42 @@ header h1 {
 }
 
 /* ═══════════════════════════════════════════
+   KAMERA-DEBUG
+═══════════════════════════════════════════ */
+.cam-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.cam-tag {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cam-tag-name {
+  font-size: 1.0rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.cam-tag-time {
+  font-size: .75rem;
+  color: var(--muted);
+}
+.cam-tag-id {
+  font-size: .7rem;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.cam-no-tag  { font-size: .85rem; color: var(--muted); font-style: italic; }
+.cam-offline { font-size: .82rem; color: var(--red); }
+.cam-online  { font-size: .82rem; color: var(--green); }
+
+/* ═══════════════════════════════════════════
    FOOTER NOTE
 ═══════════════════════════════════════════ */
 .note {
@@ -481,6 +517,16 @@ header h1 {
   </svg>
 
   <div id="gap-summary">– keine Verbindung –</div>
+</div>
+
+<!-- ── Kamera ──────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Kamera (OpenMV AprilTags)</div>
+  <div class="cam-row">
+    <div class="dot" id="cam-dot"></div>
+    <span id="cam-status-lbl" class="cam-offline">Keine Daten</span>
+  </div>
+  <div id="cam-tag-area"><span class="cam-no-tag">–</span></div>
 </div>
 
 <!-- ── Fahrzeug ──────────────────────────────────── -->
@@ -618,6 +664,7 @@ function onDisconnected() {
   rxChar = null;
   setConnected(false);
   clearBiasBtn();
+  updateCamera(0, 99999, false);
 }
 
 // ── UI-Zustand ───────────────────────────────────────
@@ -643,6 +690,7 @@ function onTelemetry(evt) {
     if (d.rp !== undefined) document.getElementById('t-raw').textContent   = d.rp;
     if (d.fp !== undefined) document.getElementById('t-filt').textContent  = d.fp;
     updateGaps(d.g || []);
+    if (d.ci !== undefined) updateCamera(d.ci, d.ct, d.cc);
   } catch (_) {}
 }
 
@@ -712,6 +760,56 @@ function updateGaps(gaps) {
   } else {
     summary.textContent = `${gaps.length} Lücke${gaps.length > 1 ? 'n' : ''}`;
   }
+}
+
+// ── Kamera-Debug ─────────────────────────────────────
+const TAG_NAMES = {
+  1: 'Start',
+  2: 'Stop',
+  3: 'Links',
+  4: 'Rechts',
+  5: 'Gerade',
+};
+const TAG_COLORS = {
+  1: '#3fb950',  // grün
+  2: '#f85149',  // rot
+  3: '#58a6ff',  // blau
+  4: '#58a6ff',  // blau
+  5: '#e3b341',  // gelb
+};
+
+function updateCamera(tagId, msAgo, connected) {
+  const dot    = document.getElementById('cam-dot');
+  const lbl    = document.getElementById('cam-status-lbl');
+  const area   = document.getElementById('cam-tag-area');
+
+  if (!connected) {
+    dot.className  = 'dot';
+    lbl.className  = 'cam-offline';
+    lbl.textContent = 'Kamera nicht verbunden';
+    area.innerHTML  = '<span class="cam-no-tag">–</span>';
+    return;
+  }
+
+  dot.className  = 'dot on';
+  lbl.className  = 'cam-online';
+  lbl.textContent = 'Verbunden';
+
+  if (!tagId || tagId === 0 || msAgo >= 2000) {
+    area.innerHTML = '<span class="cam-no-tag">Kein Tag</span>';
+    return;
+  }
+
+  const name  = TAG_NAMES[tagId]  || 'Tag ' + tagId;
+  const color = TAG_COLORS[tagId] || 'var(--muted)';
+  const ago   = msAgo < 1000 ? msAgo + ' ms' : (msAgo / 1000).toFixed(1) + ' s';
+
+  area.innerHTML =
+    `<div class="cam-tag">` +
+    `<span class="cam-tag-name" style="color:${color}">${name}</span>` +
+    `<span class="cam-tag-id">ID ${tagId}</span>` +
+    `<span class="cam-tag-time">vor ${ago}</span>` +
+    `</div>`;
 }
 
 // ── Gauge ────────────────────────────────────────────
