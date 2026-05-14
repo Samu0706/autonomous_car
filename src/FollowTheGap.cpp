@@ -13,8 +13,9 @@ void FollowTheGap::begin(const FGMConfig& cfg) {
 // =============================
 bool FollowTheGap::process(const LidarPoint* points, int count) {
 
-    _validGap = false;
-    _gapCount = 0;
+    _validGap    = false;
+    _gapCount    = 0;
+    _bestGapIdx  = -1;
 
     _frontCount = extractFrontPoints(points, count);
 
@@ -25,10 +26,8 @@ bool FollowTheGap::process(const LidarPoint* points, int count) {
         return false;
     }
 
-    // --- NEU: Disparity Extender vor der Lückensuche ---
-    if (_cfg.disparityEnabled) {
-        applyDisparityExtender();
-    }
+    if (_cfg.disparityEnabled)  applyDisparityExtender();
+    if (_cfg.nearFieldEnabled)  applyNearFieldExtender();
 
     _gapCount = findGaps();
 
@@ -154,6 +153,41 @@ void FollowTheGap::applyDisparityExtender() {
 }
 
 // =============================
+// 1c. NAHBEREICH-EXTENDER
+// Für jeden Punkt näher als nearFieldThreshold wird ein Winkelbereich
+// (Blasendurchmesser nearFieldInflate) auf seine Distanz herabgesetzt.
+// Erkennung auf Snapshot (srcDist), Schreiben in _frontPoints – kein Kaskaden-Effekt.
+// =============================
+void FollowTheGap::applyNearFieldExtender() {
+
+    if (_frontCount < 1) return;
+
+    float srcDist[MAX_FRONT_POINTS];
+    for (int i = 0; i < _frontCount; i++) {
+        srcDist[i] = _frontPoints[i].distance;
+    }
+
+    for (int i = 0; i < _frontCount; i++) {
+        float d = srcDist[i];
+        if (d <= 0.0f || d > _cfg.nearFieldThreshold) continue;
+
+        float ratio = (_cfg.nearFieldInflate * 0.5f) / d;
+        if (ratio > 0.99f) ratio = 0.99f;
+        float halfAngleDeg = asinf(ratio) * 180.0f / (float)M_PI;
+        float baseAngle = _frontPoints[i].angle;
+
+        for (int j = 0; j < _frontCount; j++) {
+            float delta = _frontPoints[j].angle - baseAngle;
+            if (delta < 0.0f) delta = -delta;
+            if (delta > halfAngleDeg) continue;
+            if (_frontPoints[j].distance > d) {
+                _frontPoints[j].distance = d;
+            }
+        }
+    }
+}
+
+// =============================
 // 2. LÜCKEN FINDEN
 // Zusammenhängende Punkte mit distance > dmin
 // =============================
@@ -249,7 +283,22 @@ int FollowTheGap::selectBestGap(int gapCount) {
         }
     }
 
+    _bestGapIdx = bestIdx;
     return bestIdx;
+}
+
+// =============================
+// GAP INFO GETTER
+// =============================
+bool FollowTheGap::getGapInfo(int idx, GapInfo& out) const {
+    if (idx < 0 || idx >= _gapCount) return false;
+    out.startAngle  = _frontPoints[_gaps[idx].startIdx].angle;
+    out.endAngle    = _frontPoints[_gaps[idx].endIdx].angle;
+    out.centerAngle = _gaps[idx].centerAngle;
+    out.meanDepth   = _gaps[idx].meanDepth;
+    out.score       = _gaps[idx].score;
+    out.isBest      = (idx == _bestGapIdx);
+    return true;
 }
 
 // =============================
@@ -280,15 +329,15 @@ float FollowTheGap::computeTargetAngle(const Gap& gap) {
 
 // =============================
 // 5. WINKEL-UMRECHNUNG
-// LiDAR 180° = vorne → Lenkwinkel 0°
-// LiDAR < 180° = rechts → positiv
-// LiDAR > 180° = links  → negativ
+// LiDAR 180° = vorne  → Lenkwinkel   0°
+// LiDAR < 180° = links → Lenkwinkel negativ
+// LiDAR > 180° = rechts → Lenkwinkel positiv
 // Mapping der LiDAR-Range (90°..270°) auf ±maxSteerAngle
 // =============================
 float FollowTheGap::lidarAngleToSteering(float lidarAngle) const {
 
-    // Offset zu 180° (geradeaus): -90..+90
-    float delta = -lidarAngle + 180.0f;
+    // Offset zu 180° (geradeaus): rechts (+), links (-)
+    float delta = lidarAngle - 180.0f;
 
     // Linear auf ±maxSteerAngle mappen
     // Frontbereich ist ±90° → Skalierung: delta / 90 * maxSteerAngle

@@ -16,8 +16,8 @@
  *
  * Konvention:
  *   LiDAR 180° = vorne (geradeaus)  →  Lenkwinkel  0°
- *   LiDAR < 180° (z.B. 150°)         →  rechts     negativ
- *   LiDAR > 180° (z.B. 210°)         →  links      positiv
+ *   LiDAR < 180° (z.B. 150°)        →  links      negativ
+ *   LiDAR > 180° (z.B. 210°)        →  rechts     positiv
  */
 struct FGMConfig {
     // Schwellwert: Punkte mit distance > dmin zählen als "frei"
@@ -47,6 +47,11 @@ struct FGMConfig {
     float disparityInflate    = 300.0f;    // Sicherheitsbreite in mm (20cm Auto + 15cm/Seite Puffer)
     float disparityThreshold  = 000.0f;    // Mindest-Distanzsprung in mm
     float disparityMaxDist    = 4000.0f;   // Disparities jenseits davon ignorieren
+
+    // Nahbereich-Extender: Blasen um sehr nahe Punkte (unabhängig von Tiefensprüngen)
+    bool  nearFieldEnabled   = true;
+    float nearFieldThreshold = 500.0f;    // mm – Punkte näher als das bekommen Blase
+    float nearFieldInflate   = 200.0f;    // mm – Blasendurchmesser (20 cm)
 };
 
 /**
@@ -92,6 +97,17 @@ public:
     float getSteeringAngle() const { return _steeringAngle; }
     bool  hasValidGap()      const { return _validGap; }
     int   getGapCount()      const { return _gapCount; }
+    int   getBestGapIdx()    const { return _bestGapIdx; }
+
+    struct GapInfo {
+        float startAngle;
+        float endAngle;
+        float centerAngle;
+        float meanDepth;    // mm
+        float score;
+        bool  isBest;
+    };
+    bool getGapInfo(int idx, GapInfo& out) const;
 
 private:
     // Interne Struktur für eine erkannte Lücke
@@ -110,9 +126,8 @@ private:
     // Frontpunkte extrahieren und nach Winkel sortieren
     int extractFrontPoints(const LidarPoint* points, int count);
 
-    // --- NEU: Disparity Extender ---
-    // Bläht Hindernis-Kanten in _frontPoints auf, in-place.
     void applyDisparityExtender();
+    void applyNearFieldExtender();
 
     // Lücken finden (zusammenhängende Punkte mit d > dmin)
     int findGaps();
@@ -138,4 +153,5 @@ private:
 
     float _steeringAngle = 0.0f;
     bool  _validGap      = false;
+    int   _bestGapIdx    = -1;
 };

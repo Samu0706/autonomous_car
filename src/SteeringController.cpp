@@ -1,8 +1,8 @@
 /* --- Update 14.04.2026 ---
 Code ist getestet und funktioniert. Räder lenken tatsächlich.
-int angle = -30 -> rechts
-int angle = 30 -> links
-int angle = 0 -> geradeaus
+int angle = +30 -> rechts
+int angle = -30 -> links
+int angle =   0 -> geradeaus
 */
 #include "SteeringController.h"
 
@@ -48,6 +48,6 @@ float SteeringController::applyRateFilter(float target) {
 }
 
 int SteeringController::angleToServo(float angle) {
-    // Lineares Mapping: -maxAngle → center-maxAngle, +maxAngle → center+maxAngle
-    return (int)(_cfg.servoCenter + angle);
+    // +angle = rechts → Servo sinkt unter Mitte; -angle = links → Servo steigt
+    return (int)(_cfg.servoCenter - angle);
 }
