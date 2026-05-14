@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "CameraSensor.h"
 #include "DisplayController.h"
 #include "RotaryEncoderController.h"
 #include "LidarSensor.h"
@@ -16,6 +17,7 @@
 // =====================
 // SYSTEM OBJECTS
 // =====================
+CameraSensor            camera;
 DisplayController       display;
 RotaryEncoderController encoder;
 LidarSensor             lidar;
@@ -35,6 +37,30 @@ BluetoothRemote         btRemote;
 // =====================
 void setup() {
     Serial.begin(115200);
+    delay(2000);
+
+    Serial.println("\n========================================");
+    Serial.println("         SYSTEM START");
+    Serial.println("========================================");
+
+    // ---------------------
+    // CAMERA (OpenMV H7 Plus) – UART2, RX=17, TX=18
+    // Nicht-blockierend: kurzer Check, System läuft auch ohne Kamera.
+    // ---------------------
+    CameraConfig cc;
+    camera.begin(cc);
+    Serial.println("[CAMERA] Warte auf erstes Signal (max. 3s)...");
+    uint32_t camDeadline = millis() + 3000;
+    while (millis() < camDeadline) {
+        if (camera.update() && camera.getState() != CameraState::WAITING) {
+            Serial.printf("[CAMERA] Signal empfangen: %s\n", camera.getRawLine());
+            break;
+        }
+        delay(50);
+    }
+    if (camera.getLastReceivedMs() == 0) {
+        Serial.println("[CAMERA] Kein Signal – System startet trotzdem");
+    }
 
     // ---------------------
     // DISPLAY
@@ -64,21 +90,18 @@ void setup() {
 
     // ---------------------
     // SPEED CONTROLLER
-    // – muss vor VSM init werden
     // ---------------------
     SpeedConfig sc;
     speed.begin(sc);
 
     // ---------------------
     // STEERING CONTROLLER
-    // – muss vor VSM & Navigation init werden
     // ---------------------
     SteeringConfig stc;
     steering.begin(stc);
 
     // ---------------------
     // VEHICLE STATE MACHINE
-    // – bekommt Speed + Steering
     // ---------------------
     StateMachineConfig smc;
     vsm.configure(smc);
@@ -86,7 +109,6 @@ void setup() {
 
     // ---------------------
     // OBSTACLE DETECTION
-    // – nach VSM, ruft vsm.update() intern
     // ---------------------
     ObstacleConfig oc;
     obstacles.begin(oc, &vsm);
@@ -95,19 +117,12 @@ void setup() {
     // FOLLOW THE GAP
     // ---------------------
     FGMConfig fgc;
-    // fgc.dmin          = 500.0f;
-    // fgc.alpha         = 1.0f;
-    // fgc.beta          = 0.01f;
-    // fgc.minGapSize    = 3;
-    // fgc.maxSteerAngle = 30.0f;
     fgm.begin(fgc);
 
     // ---------------------
-    // NAVIGATION
-    // – verknüpft FGM + Steering + VSM
-    //   lenkt nur in DRIVING aktiv
+    // NAVIGATION – verknüpft FGM, Lenkung, VSM, Motor und Kamera
     // ---------------------
-    nav.begin(&fgm, &steering, &vsm);
+    nav.begin(&fgm, &steering, &vsm, &speed, &camera);
 
     // ---------------------
     // BLUETOOTH REMOTE
@@ -144,7 +159,6 @@ void loop() {
     // ---------------------
     encoder.update();
     EncoderEvent e = encoder.getEvent();
-
     switch (e) {
         case EncoderEvent::BUTTON_CLICK:      ui.handleClick();    break;
         case EncoderEvent::BUTTON_LONG_PRESS: ui.handleHold();     break;
@@ -160,41 +174,39 @@ void loop() {
 
     if (lidar.isScanReady()) {
 
-        // Roh-Dump (nur aktiv wenn per 'd' eingeschaltet)
         lidarDump.dump(lidar.getPoints(), lidar.getPointCount());
 
-        // 1. Rohdaten filtern, diskretisieren, Referenzscan aufbauen/ergänzen.
-        //    Gibt immer 360 gleichmäßig verteilte Punkte zurück (sobald isReady()).
         int filteredCount = lidarProc.process(
             lidar.getPoints(),
             lidar.getPointCount()
         );
 
-        // 2. Hindernisse erkennen → ruft vsm.update() intern auf.
-        //    Läuft auch vor isReady(), damit der Notfall-Stopp sofort aktiv ist.
         obstacles.process(lidarProc.getPoints(), filteredCount);
 
-        // 3. Navigation / FGM – erst nach vollständigem Referenzscan.
-        //    Vorher wären Lücken im Scan mit farDistance (Freiraum) aufgefüllt,
-        //    was zu Fehlentscheidungen des Lenkreglers führen kann.
         if (lidarProc.isReady()) {
             nav.update(lidarProc.getPoints(), filteredCount);
         }
 
-        // 4. Display – immer, damit die Map-Ansicht bereits im Idle-Modus
-        //    den aufbauenden Scan zeigt (Scan-Coverage sichtbar).
         ui.draw(lidarProc.getPoints(), filteredCount);
 
-        // 5. BLE-Telemetrie (intern auf 200 ms rate-limitiert)
         btRemote.sendTelemetry(
             nav.getCurrentAngle(),
             vsm.getStateName(),
             lidar.getPointCount(),
-            filteredCount
+            filteredCount,
+            nav.getLastTagId(),
+            nav.getLastTagSeenMs(),
+            nav.isCameraConnected()
         );
 
         lidar.clearScan();
     }
+
+    // ---------------------
+    // CAMERA – am Ende: verarbeitet UART-Puffer und setzt ggf.
+    // Motor-Halt durch (überschreibt VSM-Motorbefehle von oben).
+    // ---------------------
+    nav.updateCamera();
 
     // ---------------------
     // LOOP TIME

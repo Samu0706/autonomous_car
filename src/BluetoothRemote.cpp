@@ -55,26 +55,29 @@ void BluetoothRemote::update() {
 // =============================
 // SEND TELEMETRY
 // Rate-limitiert auf 200 ms; sendet JSON-Notification
+// Kamera-Felder: ci=TagId, ct=ms seit letztem Tag, cc=connected
 // =============================
 void BluetoothRemote::sendTelemetry(float steerAngle, const char* state,
-                                     int rawPts, int filtPts) {
+                                     int rawPts, int filtPts,
+                                     int camTagId, uint32_t camLastSeenMs,
+                                     bool camConnected) {
     if (!_connected || !_txChar) return;
 
     unsigned long now = millis();
     if (now - _lastTxMs < 200) return;
     _lastTxMs = now;
 
-    char buf[512];
+    char buf[600];
     int n = snprintf(buf, sizeof(buf),
         "{\"a\":%.1f,\"s\":\"%s\",\"rp\":%d,\"fp\":%d,\"g\":[",
         steerAngle, state, rawPts, filtPts);
 
-    // Gap-Daten anhängen (max 8 Lücken, jede als [sa,ea,ca,dcm,sc100])
+    // Gap-Daten anhängen (max 8 Lücken, jede als [sa,ea,ca,dcm,sc100,best])
     if (_fgm) {
         int gapCount = _fgm->getGapCount();
         int limit    = gapCount < 8 ? gapCount : 8;
         bool first   = true;
-        for (int i = 0; i < limit && n < (int)sizeof(buf) - 40; i++) {
+        for (int i = 0; i < limit && n < (int)sizeof(buf) - 80; i++) {
             FollowTheGap::GapInfo gi;
             if (!_fgm->getGapInfo(i, gi)) continue;
             if (!first) buf[n++] = ',';
@@ -84,17 +87,18 @@ void BluetoothRemote::sendTelemetry(float steerAngle, const char* state,
                 (int)gi.startAngle,
                 (int)gi.endAngle,
                 (int)gi.centerAngle,
-                (int)(gi.meanDepth / 10.0f),   // mm → cm
-                (int)(gi.score * 100.0f),        // 0.0–1.0 → 0–100
+                (int)(gi.meanDepth / 10.0f),
+                (int)(gi.score * 100.0f),
                 gi.isBest ? 1 : 0);
         }
     }
 
-    if (n < (int)sizeof(buf) - 2) {
-        buf[n++] = ']';
-        buf[n++] = '}';
-        buf[n]   = '\0';
-    }
+    // Lücken-Array schließen + Kamera-Felder anhängen
+    uint32_t camAgoMs = (camLastSeenMs == 0) ? 99999u
+                                              : (uint32_t)(now - camLastSeenMs);
+    n += snprintf(buf + n, sizeof(buf) - n,
+        "],\"ci\":%d,\"ct\":%u,\"cc\":%d}",
+        camTagId, camAgoMs, camConnected ? 1 : 0);
 
     _txChar->setValue((uint8_t*)buf, (size_t)n);
     _txChar->notify();

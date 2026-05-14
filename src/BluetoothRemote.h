@@ -39,7 +39,11 @@ public:
     void update();
 
     // Von main.cpp nach jedem Scan aufrufen (intern rate-limitiert auf 200 ms)
-    void sendTelemetry(float steerAngle, const char* state, int rawPts, int filtPts);
+    // camTagId:      Zuletzt gesehene Tag-ID (0 = kein Tag)
+    // camLastSeenMs: millis() zum Zeitpunkt des letzten Tags (0 = nie gesehen)
+    // camConnected:  Kamera-UART antwortet innerhalb Timeout
+    void sendTelemetry(float steerAngle, const char* state, int rawPts, int filtPts,
+                       int camTagId, uint32_t camLastSeenMs, bool camConnected);
 
     char getLastCommand() const { return _lastCmd; }
     bool isConnected()    const { return _connected; }
