@@ -355,6 +355,54 @@ header h1 {
 }
 
 /* ═══════════════════════════════════════════
+   KAMERA-KARTE
+═══════════════════════════════════════════ */
+.cam-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.cam-tag {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cam-tag-name {
+  font-size: 1.0rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cam-tag-time {
+  font-size: .75rem;
+  color: var(--muted);
+}
+
+.cam-tag-id {
+  font-size: .7rem;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.cam-no-tag {
+  font-size: .85rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.cam-disconnected {
+  font-size: .82rem;
+  color: var(--red);
+}
+
+/* ═══════════════════════════════════════════
    FOOTER NOTE
 ═══════════════════════════════════════════ */
 .note {
@@ -511,6 +559,20 @@ header h1 {
   </div>
 </div>
 
+<!-- ── Kamera ─────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Kamera (OpenMV AprilTags)</div>
+
+  <div class="cam-row">
+    <div class="dot" id="cam-dot"></div>
+    <span id="cam-status-lbl" class="cam-disconnected">Keine Daten</span>
+  </div>
+
+  <div id="cam-tag-area">
+    <span class="cam-no-tag">–</span>
+  </div>
+</div>
+
 <!-- ── Parameter ────────────────────────────────── -->
 <div class="card">
   <button class="param-toggle" id="param-toggle" onclick="toggleParams()">
@@ -643,7 +705,50 @@ function onTelemetry(evt) {
     if (d.rp !== undefined) document.getElementById('t-raw').textContent   = d.rp;
     if (d.fp !== undefined) document.getElementById('t-filt').textContent  = d.fp;
     updateGaps(d.g || []);
+    updateCamera(d.ci, d.ct, d.cc);
   } catch (_) {}
+}
+
+// ── Kamera-Status ────────────────────────────────────
+const TAG_NAMES  = ['–', 'Start', 'Stop', 'Links', 'Rechts', 'Gerade'];
+const TAG_COLORS = ['var(--muted)', '#3fb950', '#f85149', '#58a6ff', '#58a6ff', '#e3b341'];
+
+function updateCamera(tagId, agoMs, connected) {
+  const dot    = document.getElementById('cam-dot');
+  const lbl    = document.getElementById('cam-status-lbl');
+  const area   = document.getElementById('cam-tag-area');
+
+  if (!connected) {
+    dot.className       = 'dot';
+    lbl.className       = 'cam-disconnected';
+    lbl.textContent     = 'Nicht verbunden (Timeout > 3 s)';
+    area.innerHTML      = '<span class="cam-no-tag">–</span>';
+    return;
+  }
+
+  dot.className   = 'dot on';
+  lbl.className   = '';
+  lbl.style.color = 'var(--green)';
+  lbl.textContent = 'Verbunden';
+
+  const id   = (tagId > 0 && tagId <= 5) ? tagId : 0;
+  const name = TAG_NAMES[id];
+  const col  = TAG_COLORS[id];
+
+  if (id === 0 || agoMs === undefined || agoMs >= 99000) {
+    area.innerHTML = '<span class="cam-no-tag">Kein Tag erkannt</span>';
+    return;
+  }
+
+  const sec    = (agoMs / 1000).toFixed(1);
+  const timeStr = agoMs < 500 ? 'gerade eben' : `vor ${sec} s`;
+
+  area.innerHTML =
+    `<div class="cam-tag">` +
+      `<span class="cam-tag-name" style="color:${col}">${name}</span>` +
+      `<span class="cam-tag-id">ID&nbsp;${id}</span>` +
+      `<span class="cam-tag-time">${timeStr}</span>` +
+    `</div>`;
 }
 
 // ── Lücken-Visualisierung ────────────────────────────

@@ -1,63 +1,50 @@
 #include "CameraSensor.h"
 
-// Eigener HardwareSerial-Port für HuskyLens (Serial1 ist frei)
-static HardwareSerial huskylensSerial(1);
-
 bool CameraSensor::begin(const CameraConfig& cfg) {
     _cfg = cfg;
-
-    huskylensSerial.begin(cfg.baudRate, SERIAL_8N1, cfg.rxPin, cfg.txPin);
-
-    // HuskyLens hat eigenes OS – braucht bei separater Stromversorgung bis zu 5s zum Booten.
-    // Retry-Schleife für max. 30 Sekunden.
-    Serial.println("[CAMERA] Warte auf HuskyLens V2 via UART (max. 30s) ...");
-    uint32_t deadline = millis() + 30000;
-    uint8_t attempt = 0;
-    while (millis() < deadline) {
-        if (_huskylens.begin(huskylensSerial)) {
-            Serial.printf("[CAMERA] HuskyLens V2 bereit (nach %d Versuchen)\n", attempt + 1);
-            _huskylens.switchAlgorithm(cfg.algorithm);
-            _initialized = true;
-            return true;
-        }
-        attempt++;
-        Serial.printf("[CAMERA]   Versuch %d fehlgeschlagen, warte...\n", attempt);
-        delay(500);
-    }
-
-    Serial.println("[CAMERA] FEHLGESCHLAGEN – HuskyLens antwortet nicht nach 30s");
-    Serial.println("[CAMERA]   Prüfe: GND verbunden? TX(grün)→Pin9, RX(blau)→Pin10? UART-Modus gesetzt?");
-    return false;
+    _serial.begin(cfg.baudRate, SERIAL_8N1, cfg.rxPin, cfg.txPin);
+    Serial.printf("[CAMERA] UART2 init  RX=%d TX=%d  %lu baud\n",
+                  cfg.rxPin, cfg.txPin, cfg.baudRate);
+    return true;
 }
 
 bool CameraSensor::update() {
-    if (!_initialized) return false;
-
-    _count = 0;
-
-    if (!_huskylens.getResult(_cfg.algorithm)) return false;
-
-    while (_huskylens.available(_cfg.algorithm) && _count < MAX_RESULTS) {
-        Result* raw = static_cast<Result*>(
-            _huskylens.popCachedResult(_cfg.algorithm));
-        if (!raw) break;
-
-        CameraResult& r = _results[_count++];
-        r.id      = raw->ID;
-        r.xCenter = raw->xCenter;
-        r.yCenter = raw->yCenter;
-        r.width   = raw->width;
-        r.height  = raw->height;
-        r.pitch   = raw->pitch;
-        r.yaw     = raw->yaw;
-        strncpy(r.name, raw->name.c_str(), sizeof(r.name) - 1);
-        r.name[sizeof(r.name) - 1] = '\0';
+    bool gotLine = false;
+    while (_serial.available()) {
+        _lastReceivedMs = millis();   // jedes empfangene Byte zählt als "connected"
+        char c = (char)_serial.read();
+        if (c == '\n' || c == '\r') {
+            if (_linePos > 0) {
+                _lineBuf[_linePos] = '\0';
+                parseLine();
+                _linePos = 0;
+                gotLine  = true;
+            }
+        } else if (_linePos < BUF_SIZE - 1) {
+            _lineBuf[_linePos++] = c;
+        }
     }
-
-    return _count > 0;
+    return gotLine;
 }
 
-CameraResult CameraSensor::getResult(int index) const {
-    if (index < 0 || index >= _count) return {};
-    return _results[index];
+void CameraSensor::parseLine() {
+    if (strncmp(_lineBuf, "<STARTUP>", 9) == 0) {
+        _state = CameraState::NO_TAG;
+        return;
+    }
+    if (strncmp(_lineBuf, "<STATUS>", 8) == 0) {
+        _state = CameraState::NO_TAG;
+        return;
+    }
+    if (strncmp(_lineBuf, "<DATA>", 6) == 0) {
+        int   id   = 0;
+        float ang  = 0.f;
+        float dist = 0.f;
+        if (sscanf(_lineBuf, "<DATA>,ID=%d,ANG=%f,DIST=%f", &id, &ang, &dist) == 3) {
+            _result.id          = id;
+            _result.angle_deg   = ang;
+            _result.distance_cm = dist;
+            _state = CameraState::TAG_FOUND;
+        }
+    }
 }
