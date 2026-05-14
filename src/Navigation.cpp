@@ -45,23 +45,8 @@ int Navigation::tagPriority(int id) {
 void Navigation::updateCamera() {
     if (!_cam) return;
 
-    // ── Kamera-Timeout: aktive Zustände zurücksetzen ──────────────
-    if (!isCameraConnected()) {
-        if (_biasActive) {
-            _fgm->clearDirectionBias();
-            _biasActive = false;
-            _biasTagId  = 0;
-        }
-        if (_motorHeld) {
-            resumeMotor();
-            _motorHeld  = false;
-        }
-        _stopActive = false;
-        return;
-    }
-
-    // ── Alle gepufferten UART-Zeilen lesen ────────────────────────
-    // Höchst-priorisiertes Tag dieses Frames bestimmen
+    // ── UART zuerst leeren (aktualisiert _lastReceivedMs) ─────────
+    // Muss VOR dem Connectivity-Check passieren, damit Reconnect erkannt wird.
     bool           tagFound = false;
     int            bestPrio = -1;
     AprilTagResult bestTag;
@@ -76,6 +61,21 @@ void Navigation::updateCamera() {
                 tagFound = true;
             }
         }
+    }
+
+    // ── Kamera-Timeout: aktive Zustände zurücksetzen ──────────────
+    if (!isCameraConnected()) {
+        if (_biasActive) {
+            _fgm->clearDirectionBias();
+            _biasActive = false;
+            _biasTagId  = 0;
+        }
+        if (_motorHeld) {
+            resumeMotor();
+            _motorHeld  = false;
+        }
+        _stopActive = false;
+        return;
     }
 
     uint32_t now = millis();
