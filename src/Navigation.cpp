@@ -99,7 +99,7 @@ void Navigation::updateCamera() {
 void Navigation::handleTag(const AprilTagResult& tag) {
     uint32_t now    = millis();
     float    distMm = tag.distance_cm * 10.0f;
-    bool     close  = distMm < DIST_THRESHOLD_MM;
+    bool     close  = distMm < _distThresholdMm;
 
     switch (tag.id) {
 

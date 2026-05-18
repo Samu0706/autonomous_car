@@ -575,8 +575,8 @@ header h1 {
 
     <!-- FGM -->
     <label>dmin (mm)</label>
-    <input type="range" id="p-dmin" min="300" max="4000" step="50" value="1500">
-    <span class="param-val" id="p-dmin-v">1500</span>
+    <input type="range" id="p-dmin" min="300" max="6000" step="50" value="4000">
+    <span class="param-val" id="p-dmin-v">4000</span>
 
     <label>Alpha</label>
     <input type="range" id="p-alpha" min="0" max="1" step="0.05" value="0.4">
@@ -592,6 +592,13 @@ header h1 {
     <label>Bias-Stärke</label>
     <input type="range" id="p-bstr" min="0" max="1" step="0.05" value="0.4">
     <span class="param-val" id="p-bstr-v">0.40</span>
+
+    <hr class="param-divider">
+
+    <!-- Kamera -->
+    <label>Tag-Abstand (mm)</label>
+    <input type="range" id="p-cthr" min="300" max="3000" step="50" value="1200">
+    <span class="param-val" id="p-cthr-v">1200</span>
 
   </div>
 </div>
@@ -874,6 +881,7 @@ const PARAMS = [
   { id: 'p-alpha', key: 'ALPHA', dec: 2,  debounce: 300 },
   { id: 'p-beta',  key: 'BETA',  dec: 2,  debounce: 300 },
   { id: 'p-bstr',  key: 'BSTR',  dec: 2,  debounce: 300 },
+  { id: 'p-cthr',  key: 'CTHR',  dec: 0,  debounce: 300 },
 ];
 
 PARAMS.forEach(({ id, key, dec, debounce }) => {

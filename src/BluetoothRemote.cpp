@@ -1,5 +1,6 @@
 #include "BluetoothRemote.h"
 #include "DisplayUI.h"
+#include "Navigation.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -14,11 +15,13 @@ void BluetoothRemote::begin(FollowTheGap*        fgm,
                              VehicleStateMachine* vsm,
                              SpeedController*     spd,
                              DisplayUI*           ui,
+                             Navigation*          nav,
                              const char*          deviceName) {
     _fgm = fgm;
     _vsm = vsm;
     _spd = spd;
     _ui  = ui;
+    _nav = nav;
 
     NimBLEDevice::init(deviceName);
 
@@ -181,6 +184,9 @@ void BluetoothRemote::handleCommand(const char* cmd) {
 
         } else if (strcmp(key, "BSTR") == 0) {
             _biasStrength = constrain(fval, 0.0f, 1.0f);
+
+        } else if (strcmp(key, "CTHR") == 0) {
+            if (_nav) _nav->setTagDistThreshold(constrain(fval, 100.0f, 5000.0f));
 
         } else if (strcmp(key, "L") == 0) {
             DirectionBias bias;

@@ -12,12 +12,13 @@
  * Tag-Kodierung:
  *   ID 1 = Start      → vsm.start()  wenn IDLE
  *   ID 2 = Stop       → Motor sofort stoppen, nach 3s vsm.stop() → IDLE
- *   ID 3 = Links      → FGM-Bias links   (nur wenn dist < 0.9 m)
- *   ID 4 = Rechts     → FGM-Bias rechts  (nur wenn dist < 0.9 m)
+ *   ID 3 = Links      → FGM-Bias links   (nur wenn dist < distThreshold)
+ *   ID 4 = Rechts     → FGM-Bias rechts  (nur wenn dist < distThreshold)
  *   ID 5 = Gerade     → FGM-Bias gerade  (sofort bei Erkennung)
  *
  * Bias-Reset: 2 s nachdem das Richtungs-Tag nicht mehr sichtbar ist.
- * Stop-Bedingung: Tag muss 3 s ununterbrochen bei < 0.9 m sichtbar sein.
+ * Stop-Bedingung: Tag muss 3 s ununterbrochen bei < distThreshold sichtbar sein.
+ * Standard-Schwellwert: 1.2 m (per BLE CTHR= einstellbar).
  * Kamera-Timeout: 3 s kein Signal → "nicht verbunden"; bei Reconnect normaler Betrieb.
  *
  * Aufruf-Schema in loop():
@@ -39,6 +40,9 @@ public:
     // Verarbeitet alle gepufferten UART-Zeilen, setzt Bias / Stop-Logik,
     // und überschreibt ggf. VSM-Motorbefehle (Motor-Halt).
     void updateCamera();
+
+    // Einstellbarer Tag-Abstandsschwellwert (Standard 1.2 m)
+    void     setTagDistThreshold(float mm) { _distThresholdMm = mm; }
 
     // ── Getter für Telemetrie ──────────────────────────────────────
     float    getCurrentAngle()   const;
@@ -74,8 +78,10 @@ private:
     uint32_t _stopLastSeenMs     = 0;
     bool     _motorHeld          = false;  // Motor wurde durch uns gestoppt
 
+    // Einstellbarer Tag-Abstandsschwellwert
+    float                    _distThresholdMm    = 1200.0f; // Standard 1.2 m
+
     // Konstanten
-    static constexpr float    DIST_THRESHOLD_MM  = 900.0f;  // 0.9 m
     static constexpr uint32_t BIAS_RESET_MS      = 2000;
     static constexpr uint32_t STOP_DELAY_MS      = 3000;
     static constexpr uint32_t STOP_GRACE_MS      = 500;    // kurze Unterbrechung tolerieren

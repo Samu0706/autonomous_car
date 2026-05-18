@@ -5,7 +5,8 @@
 #include "VehicleStateMachine.h"
 #include "SpeedController.h"
 
-class DisplayUI; // forward declaration – vermeidet circular include mit DisplayUI.h
+class DisplayUI;  // forward declaration – vermeidet circular include mit DisplayUI.h
+class Navigation; // forward declaration
 
 /**
  * BLE UART Remote (Nordic UART Service).
@@ -18,6 +19,7 @@ class DisplayUI; // forward declaration – vermeidet circular include mit Displ
  *                   BETA=0.6  – FGM Gewicht Tiefe
  *                   MGAP=3    – FGM Min. Lückenpunkte
  *                   BSTR=0.4  – Bias-Stärke für L/R/F-Befehle
+ *                   CTHR=1200 – Kamera-Tag Abstandsschwellwert (mm)
  *
  * Sende-Protokoll (ESP32 → Web, JSON-Notification, max. 200 ms):
  *   {"a":-12.3,"s":"DRIVING","rp":800,"fp":360}
@@ -33,6 +35,7 @@ public:
                VehicleStateMachine* vsm,
                SpeedController*     spd,
                DisplayUI*           ui,
+               Navigation*          nav,
                const char*          deviceName = "LidarCar");
 
     // Im Arduino-Loop aufrufen
@@ -60,6 +63,7 @@ private:
     VehicleStateMachine*  _vsm        = nullptr;
     SpeedController*      _spd        = nullptr;
     DisplayUI*            _ui         = nullptr;
+    Navigation*           _nav        = nullptr;
 
     NimBLECharacteristic* _txChar     = nullptr;   // Telemetrie-Notifications
     unsigned long         _lastTxMs   = 0;

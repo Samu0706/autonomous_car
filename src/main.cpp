@@ -127,7 +127,7 @@ void setup() {
     // ---------------------
     // BLUETOOTH REMOTE
     // ---------------------
-    btRemote.begin(&fgm, &vsm, &speed, &ui);
+    btRemote.begin(&fgm, &vsm, &speed, &ui, &nav);
 
     // ---------------------
     // UI
