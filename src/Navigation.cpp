@@ -135,6 +135,7 @@ void Navigation::handleTag(const AprilTagResult& tag) {
             DirectionBias bias;
             bias.left = BIAS_STRENGTH;
             _fgm->setDirectionBias(bias);
+            if (!_biasActive) _biasHoldUntilMs = now + BIAS_MIN_HOLD_MS;
             _biasActive        = true;
             _biasTagId         = 3;
             _biasTagLastSeenMs = now;
@@ -147,6 +148,7 @@ void Navigation::handleTag(const AprilTagResult& tag) {
             DirectionBias bias;
             bias.right = BIAS_STRENGTH;
             _fgm->setDirectionBias(bias);
+            if (!_biasActive) _biasHoldUntilMs = now + BIAS_MIN_HOLD_MS;
             _biasActive        = true;
             _biasTagId         = 4;
             _biasTagLastSeenMs = now;
@@ -158,6 +160,7 @@ void Navigation::handleTag(const AprilTagResult& tag) {
             DirectionBias bias;
             bias.straight = BIAS_STRENGTH;
             _fgm->setDirectionBias(bias);
+            if (!_biasActive) _biasHoldUntilMs = now + BIAS_MIN_HOLD_MS;
             _biasActive        = true;
             _biasTagId         = 5;
             _biasTagLastSeenMs = now;
@@ -171,7 +174,9 @@ void Navigation::handleTag(const AprilTagResult& tag) {
 // =============================
 void Navigation::checkBiasExpiry() {
     if (!_biasActive) return;
-    if ((millis() - _biasTagLastSeenMs) >= BIAS_RESET_MS) {
+    uint32_t now = millis();
+    if (now < _biasHoldUntilMs) return;           // Mindesthaltedauer noch aktiv
+    if ((now - _biasTagLastSeenMs) >= BIAS_RESET_MS) {
         _fgm->clearDirectionBias();
         _biasActive = false;
         _biasTagId  = 0;

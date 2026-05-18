@@ -70,6 +70,7 @@ private:
     // Richtungs-Bias
     int      _biasTagId          = 0;
     uint32_t _biasTagLastSeenMs  = 0;
+    uint32_t _biasHoldUntilMs    = 0;   // Mindesthaltedauer ab erster Aktivierung
     bool     _biasActive         = false;
 
     // Stop-Tag Sequenz
@@ -82,7 +83,8 @@ private:
     float                    _distThresholdMm    = 1200.0f; // Standard 1.2 m
 
     // Konstanten
-    static constexpr uint32_t BIAS_RESET_MS      = 2000;
+    static constexpr uint32_t BIAS_RESET_MS      = 2000;  // nach letztem Sehen
+    static constexpr uint32_t BIAS_MIN_HOLD_MS   = 2000;  // Mindesthaltedauer ab Aktivierung
     static constexpr uint32_t STOP_DELAY_MS      = 3000;
     static constexpr uint32_t STOP_GRACE_MS      = 500;    // kurze Unterbrechung tolerieren
     static constexpr uint32_t CAM_TIMEOUT_MS     = 3000;
