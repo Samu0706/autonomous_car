@@ -200,7 +200,9 @@ void LidarProcessing::applyMedianFilter() {
     int w          = _cfg.medianWindow;
     int windowSize = 2 * w + 1;
 
-    float* window = new float[windowSize];
+    // Statischer Puffer – max. medianWindow=10 → 2*10+1=21.
+    // Kein heap-alloc pro Scan → verhindert Fragmentierung / nullptr-Crash.
+    static float window[21];
 
     for (int i = 0; i < _filteredCount; i++) {
         _temp[i] = _filtered[i];
@@ -219,8 +221,6 @@ void LidarProcessing::applyMedianFilter() {
 
         _temp[i].distance = median(window, count);
     }
-
-    delete[] window;
 
     for (int i = 0; i < _filteredCount; i++) {
         _filtered[i] = _temp[i];

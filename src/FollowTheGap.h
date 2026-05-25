@@ -49,7 +49,7 @@ struct FGMConfig {
     // knapp an Hindernis-Kanten vorbeischrammt. Defaults passen zum
     // Visualisierungs-Tool.
     bool  disparityEnabled    = true;
-    float disparityInflate    = 300.0f;    // Sicherheitsbreite in mm (20cm Auto + 15cm/Seite Puffer)
+    float disparityInflate    = 350.0f;    // Sicherheitsbreite in mm (20cm Auto + 15cm/Seite Puffer)
     float disparityThreshold  = 000.0f;    // Mindest-Distanzsprung in mm
     float disparityMaxDist    = 4000.0f;   // Disparities jenseits davon ignorieren
 

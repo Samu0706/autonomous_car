@@ -1,6 +1,10 @@
 #include "FollowTheGap.h"
 #include <math.h>
 
+// Auf 1 setzen um FGM-Lenkwinkel/Gap-Details seriell auszugeben.
+// Im Fahrbetrieb auf 0 lassen – Serial.print blockiert den Loop bei vollem TX-Puffer.
+#define FGM_DEBUG 0
+
 // =============================
 // BEGIN
 // =============================
@@ -19,10 +23,14 @@ bool FollowTheGap::process(const LidarPoint* points, int count) {
 
     _frontCount = extractFrontPoints(points, count);
 
+#if FGM_DEBUG
     Serial.print("[FGM] front="); Serial.print(_frontCount);
+#endif
 
     if (_frontCount < _cfg.minGapSize) {
+#if FGM_DEBUG
         Serial.println(" → zu wenig Punkte");
+#endif
         return false;
     }
 
@@ -31,17 +39,23 @@ bool FollowTheGap::process(const LidarPoint* points, int count) {
 
     _gapCount = findGaps();
 
+#if FGM_DEBUG
     Serial.print(" gaps="); Serial.print(_gapCount);
+#endif
 
     if (_gapCount == 0) {
+#if FGM_DEBUG
         Serial.println(" → keine Lücke, dmin zu hoch?");
+#endif
         _steeringAngle = 0.0f;
         return false;
     }
 
     int bestIdx = selectBestGap(_gapCount);
     if (bestIdx < 0) {
+#if FGM_DEBUG
         Serial.println(" → keine beste Lücke");
+#endif
         return false;
     }
 
@@ -49,9 +63,11 @@ bool FollowTheGap::process(const LidarPoint* points, int count) {
     _steeringAngle = lidarAngleToSteering(targetLidarAngle);
     _validGap      = true;
 
+#if FGM_DEBUG
     Serial.print(" bestSize="); Serial.print(_gaps[bestIdx].size);
     Serial.print(" depth=");    Serial.print(_gaps[bestIdx].meanDepth);
     Serial.print(" → angle=");  Serial.println(_steeringAngle);
+#endif
 
     return true;
 }

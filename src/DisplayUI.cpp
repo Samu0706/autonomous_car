@@ -93,6 +93,12 @@ void DisplayUI::update(unsigned long loopTime) {
 // MAIN DRAW ROUTER
 // =============================
 void DisplayUI::draw(const LidarPoint* points, int count) {
+    // I²C sendBuffer() blockiert ~25 ms – auf max. 10 Hz begrenzen.
+    static unsigned long lastDrawMs = 0;
+    unsigned long now = millis();
+    if (now - lastDrawMs < 100) return;
+    lastDrawMs = now;
+
     if (_driveActive) {
         switch (_driveView) {
             case DriveView::COCKPIT_DRIVE: drawDrive();            break;

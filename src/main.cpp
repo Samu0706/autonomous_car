@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <esp_system.h>
 #include "CameraSensor.h"
 #include "DisplayController.h"
 #include "RotaryEncoderController.h"
@@ -42,6 +43,15 @@ void setup() {
     Serial.println("\n========================================");
     Serial.println("         SYSTEM START");
     Serial.println("========================================");
+
+    // Reset-Grund ausgeben – hilft bei Crash-Diagnose:
+    // 1=POWERON  3=SW-Reset  4=PANIC(Crash)  6=BROWNOUT(Spannung)  7=WDT
+    esp_reset_reason_t rr = esp_reset_reason();
+    Serial.printf("[RESET] Grund: %d", (int)rr);
+    if      (rr == ESP_RST_PANIC)    Serial.print("  ← PANIC/Crash!");
+    else if (rr == ESP_RST_BROWNOUT) Serial.print("  ← BROWNOUT! Spannung zu niedrig.");
+    else if (rr == ESP_RST_TASK_WDT) Serial.print("  ← Task-Watchdog (Loop blockiert).");
+    Serial.println();
 
     // ---------------------
     // CAMERA (OpenMV H7 Plus) – UART2, RX=17, TX=18
