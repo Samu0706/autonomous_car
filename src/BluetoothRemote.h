@@ -4,6 +4,7 @@
 #include "FollowTheGap.h"
 #include "VehicleStateMachine.h"
 #include "SpeedController.h"
+#include "SteeringController.h"
 
 class DisplayUI;  // forward declaration – vermeidet circular include mit DisplayUI.h
 class Navigation; // forward declaration
@@ -21,6 +22,7 @@ class Navigation; // forward declaration
  *                   BSTR=0.4  – Bias-Stärke für L/R/F-Befehle
  *                   CTHR=1200 – Kamera-Tag Abstandsschwellwert (mm)
  *                   GAIN=1.5  – FGM Lenkwinkel-Multiplikator (0.5–3.0)
+ *                   TRIM=3.0  – Servo-Trim-Offset in ° (live, −15…+15)
  *
  * Sende-Protokoll (ESP32 → Web, JSON-Notification, max. 200 ms):
  *   {"a":-12.3,"s":"DRIVING","rp":800,"fp":360}
@@ -35,6 +37,7 @@ public:
     void begin(FollowTheGap*        fgm,
                VehicleStateMachine* vsm,
                SpeedController*     spd,
+               SteeringController*  str,
                DisplayUI*           ui,
                Navigation*          nav,
                const char*          deviceName = "LidarCar");
@@ -67,6 +70,7 @@ private:
     FollowTheGap*         _fgm        = nullptr;
     VehicleStateMachine*  _vsm        = nullptr;
     SpeedController*      _spd        = nullptr;
+    SteeringController*   _str        = nullptr;
     DisplayUI*            _ui         = nullptr;
     Navigation*           _nav        = nullptr;
 

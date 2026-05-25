@@ -14,12 +14,14 @@
 void BluetoothRemote::begin(FollowTheGap*        fgm,
                              VehicleStateMachine* vsm,
                              SpeedController*     spd,
+                             SteeringController*  str,
                              DisplayUI*           ui,
                              Navigation*          nav,
                              const char*          deviceName) {
     _fgm = fgm;
     _vsm = vsm;
     _spd = spd;
+    _str = str;
     _ui  = ui;
     _nav = nav;
 
@@ -225,6 +227,9 @@ void BluetoothRemote::handleCommand(const char* cmd) {
             FGMConfig cfg = _fgm->getConfig();
             cfg.steerGain = constrain(fval, 0.5f, 3.0f);
             _fgm->setConfig(cfg);
+
+        } else if (strcmp(key, "TRIM") == 0) {
+            if (_str) _str->setTrimOffset(constrain(fval, -15.0f, 15.0f));
         }
         return;
     }
@@ -276,22 +281,21 @@ void BluetoothRemote::handleCommand(const char* cmd) {
 
 // =============================
 // SEND CONFIG  –  Loop-Kontext
-// Sendet aktuellen Parameterstand als JSON-Notification.
-// Wird einmalig 500ms nach Verbindungsaufbau und auf "GET"-Befehl gesendet.
-// Format: {"cfg":1,"spd":150,"dmin":1500,"alpha":0.40,"beta":0.60,
-//          "mgap":3,"bstr":0.40,"cthr":1200,"fard":9000}
+// Format: {"cfg":1,"spd":N,"dmin":N,"alpha":F,"beta":F,
+//          "mgap":N,"bstr":F,"cthr":N,"fard":N,"gain":F,"trim":F}
 // =============================
 void BluetoothRemote::sendConfig() {
     if (!_connected || !_txChar) return;
 
-    FGMConfig cfg  = _fgm ? _fgm->getConfig() : FGMConfig{};
-    int       spd  = _spd ? _spd->getForwardSpeed()      : 150;
-    float     cthr = _nav ? _nav->getTagDistThreshold()  : 1200.0f;
+    FGMConfig cfg  = _fgm ? _fgm->getConfig()            : FGMConfig{};
+    int       spd  = _spd ? _spd->getForwardSpeed()       : 150;
+    float     cthr = _nav ? _nav->getTagDistThreshold()   : 1200.0f;
+    float     trim = _str ? _str->getTrimOffset()         : 0.0f;
 
-    char buf[220];
+    char buf[240];
     int n = snprintf(buf, sizeof(buf),
         "{\"cfg\":1,\"spd\":%d,\"dmin\":%d,\"alpha\":%.2f,\"beta\":%.2f,"
-        "\"mgap\":%d,\"bstr\":%.2f,\"cthr\":%d,\"fard\":%d,\"gain\":%.2f}",
+        "\"mgap\":%d,\"bstr\":%.2f,\"cthr\":%d,\"fard\":%d,\"gain\":%.2f,\"trim\":%.1f}",
         spd,
         (int)cfg.dmin,
         cfg.alpha,
@@ -300,7 +304,8 @@ void BluetoothRemote::sendConfig() {
         _biasStrength,
         (int)cthr,
         (int)cfg.farDistance,
-        cfg.steerGain);
+        cfg.steerGain,
+        trim);
 
     _txChar->setValue((uint8_t*)buf, (size_t)n);
     _txChar->notify();

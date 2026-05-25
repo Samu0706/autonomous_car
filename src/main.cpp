@@ -16,6 +16,14 @@
 #include "BluetoothRemote.h"
 
 // =====================
+// DEBUG-MODUS: Geradeausfahrt zum Trim-Kalibrieren
+// 1 = FGM/Obstacles/Navigation deaktiviert, Auto fährt immer geradeaus.
+//     Trim live über Website-Slider (TRIM=) einstellbar.
+// 0 = Normalbetrieb (FGM, AprilTag-Navigation, Hinderniserkennung aktiv)
+// =====================
+#define DEBUG_STRAIGHT 1
+
+// =====================
 // SYSTEM OBJECTS
 // =====================
 CameraSensor            camera;
@@ -41,7 +49,11 @@ void setup() {
     delay(2000);
 
     Serial.println("\n========================================");
+#if DEBUG_STRAIGHT
+    Serial.println("    SYSTEM START  [DEBUG: GERADEAUS]");
+#else
     Serial.println("         SYSTEM START");
+#endif
     Serial.println("========================================");
 
     // Reset-Grund ausgeben – hilft bei Crash-Diagnose:
@@ -55,7 +67,6 @@ void setup() {
 
     // ---------------------
     // CAMERA (OpenMV H7 Plus) – UART2, RX=17, TX=18
-    // Nicht-blockierend: kurzer Check, System läuft auch ohne Kamera.
     // ---------------------
     CameraConfig cc;
     camera.begin(cc);
@@ -137,7 +148,7 @@ void setup() {
     // ---------------------
     // BLUETOOTH REMOTE
     // ---------------------
-    btRemote.begin(&fgm, &vsm, &speed, &ui, &nav);
+    btRemote.begin(&fgm, &vsm, &speed, &steering, &ui, &nav);
 
     // ---------------------
     // UI
@@ -154,19 +165,9 @@ void loop() {
 
     unsigned long start = millis();
 
-    // ---------------------
-    // DUMP (toggle mit 'd' über Serial)
-    // ---------------------
     lidarDump.checkSerial();
-
-    // ---------------------
-    // BLUETOOTH REMOTE
-    // ---------------------
     btRemote.update();
 
-    // ---------------------
-    // ENCODER
-    // ---------------------
     encoder.update();
     EncoderEvent e = encoder.getEvent();
     switch (e) {
@@ -177,9 +178,6 @@ void loop() {
         default: break;
     }
 
-    // ---------------------
-    // LIDAR
-    // ---------------------
     lidar.update();
 
     if (lidar.isScanReady()) {
@@ -191,16 +189,24 @@ void loop() {
             lidar.getPointCount()
         );
 
+#if DEBUG_STRAIGHT
+        // ── DEBUG: Geradeausfahrt – FGM/Nav/Obstacles deaktiviert ──
+        // Lenkung immer auf 0° + aktuellen Trim-Offset.
+        // Trim live über BLE TRIM= oder Website-Slider einstellbar.
+        steering.setAngle(0.0f);
+#else
+        // ── NORMALBETRIEB ──
         obstacles.process(lidarProc.getPoints(), filteredCount);
 
         if (lidarProc.isReady()) {
             nav.update(lidarProc.getPoints(), filteredCount);
         }
+#endif
 
         ui.draw(lidarProc.getPoints(), filteredCount);
 
         btRemote.sendTelemetry(
-            nav.getCurrentAngle(),
+            steering.getCurrentAngle(),
             vsm.getStateName(),
             lidar.getPointCount(),
             filteredCount,
@@ -212,15 +218,11 @@ void loop() {
         lidar.clearScan();
     }
 
-    // ---------------------
-    // CAMERA – am Ende: verarbeitet UART-Puffer und setzt ggf.
-    // Motor-Halt durch (überschreibt VSM-Motorbefehle von oben).
-    // ---------------------
+#if !DEBUG_STRAIGHT
+    // Kamera-Logik nur im Normalbetrieb (AprilTag-Navigation)
     nav.updateCamera();
+#endif
 
-    // ---------------------
-    // LOOP TIME
-    // ---------------------
     unsigned long loopTime = millis() - start;
     ui.update(loopTime);
 }

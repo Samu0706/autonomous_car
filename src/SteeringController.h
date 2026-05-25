@@ -42,6 +42,10 @@ public:
     void setAngle(float vehicleAngle_deg);   // -max..0..+max
     void center();                            // Geradeaus
 
+    // Trim live änderbar (z.B. via BLE TRIM= im Debug-Modus)
+    void  setTrimOffset(float deg) { _cfg.trimOffset_deg = deg; }
+    float getTrimOffset()    const { return _cfg.trimOffset_deg; }
+
     float getCurrentAngle() const { return _currentAngle; }
 
 private:
