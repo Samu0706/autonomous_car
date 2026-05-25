@@ -108,6 +108,7 @@ void setup() {
     // STEERING CONTROLLER
     // ---------------------
     SteeringConfig stc;
+    stc.trimOffset_deg = 3.5f;  // Rechtsdrall-Korrektur (positiv = nach links)
     steering.begin(stc);
 
     // ---------------------
