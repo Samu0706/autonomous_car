@@ -199,7 +199,11 @@ int FollowTheGap::findGaps() {
 
     for (int i = 0; i < _frontCount; i++) {
 
-        bool isFree = (_frontPoints[i].distance > _cfg.dmin);
+        // Frei = Distanz über dmin UND kein farDistance-Fallback (kein Echosignal).
+        // Ohne die farDistance-Prüfung würden d=0-Ersatzwerte (9000 mm) als tiefer
+        // Freiraum gewertet und phantom Lücken erzeugen.
+        float d      = _frontPoints[i].distance;
+        bool isFree  = (d > _cfg.dmin) && (d < _cfg.farDistance - 100.0f);
 
         if (isFree && !inGap) {
             // Lücke beginnt
@@ -266,6 +270,7 @@ int FollowTheGap::selectBestGap(int gapCount) {
     for (int g = 0; g < gapCount; g++) {
         float normSize  = (float)_gaps[g].size / _frontCount;
         float normDepth = _gaps[g].meanDepth / 6000.0f;
+        if (normDepth > 1.0f) normDepth = 1.0f;  // YDLIDAR gibt bis 8000mm zurück → ohne Clamp score > 1
         float baseScore = _cfg.alpha * normSize + _cfg.beta * normDepth;
 
         // Richtungsbonus: welcher Zone gehört der Lücken-Mittelpunkt an?

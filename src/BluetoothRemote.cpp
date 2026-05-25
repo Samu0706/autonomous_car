@@ -50,6 +50,13 @@ void BluetoothRemote::begin(FollowTheGap*        fgm,
 // UPDATE  –  Arduino-Loop-Kontext
 // =============================
 void BluetoothRemote::update() {
+    // Config einmalig 500 ms nach Verbindungsaufbau senden (gibt Client Zeit
+    // zum Aktivieren der Notifications bevor das Paket eintrifft).
+    if (_sendConfig && _connected && (millis() - _connectedMs >= 500)) {
+        _sendConfig = false;
+        sendConfig();
+    }
+
     if (!_cmdReady) return;
     _cmdReady = false;
     handleCommand(_cmdBuf);
@@ -127,7 +134,9 @@ void BluetoothRemote::onWrite(NimBLECharacteristic* pChar) {
 // CONNECT / DISCONNECT
 // =============================
 void BluetoothRemote::onConnect(NimBLEServer*) {
-    _connected = true;
+    _connected   = true;
+    _connectedMs = millis();
+    _sendConfig  = true;
     Serial.println("[BLE] client connected");
 }
 
@@ -205,11 +214,22 @@ void BluetoothRemote::handleCommand(const char* cmd) {
             bias.straight = constrain(fval, 0.0f, 1.0f);
             _fgm->setDirectionBias(bias);
             _biasStrength = bias.straight;
+
+        } else if (strcmp(key, "FARD") == 0) {
+            FGMConfig cfg = _fgm->getConfig();
+            cfg.farDistance = constrain(fval, 1000.0f, 15000.0f);
+            _fgm->setConfig(cfg);
         }
         return;
     }
 
     // ── Einzelzeichen-Befehle ────────────────────────────────────
+    // ── GET: aktuellen Config-Stand anfordern ────────────────────
+    if (strcmp(cmd, "GET") == 0) {
+        sendConfig();
+        return;
+    }
+
     if (cmd[0] == '\0' || cmd[1] != '\0') return;  // leer oder mehrteilig ohne '='
     char c = cmd[0];
     _lastCmd = c;
@@ -246,4 +266,37 @@ void BluetoothRemote::handleCommand(const char* cmd) {
         default:
             break;
     }
+}
+
+// =============================
+// SEND CONFIG  –  Loop-Kontext
+// Sendet aktuellen Parameterstand als JSON-Notification.
+// Wird einmalig 500ms nach Verbindungsaufbau und auf "GET"-Befehl gesendet.
+// Format: {"cfg":1,"spd":150,"dmin":1500,"alpha":0.40,"beta":0.60,
+//          "mgap":3,"bstr":0.40,"cthr":1200,"fard":9000}
+// =============================
+void BluetoothRemote::sendConfig() {
+    if (!_connected || !_txChar) return;
+
+    FGMConfig cfg  = _fgm ? _fgm->getConfig() : FGMConfig{};
+    int       spd  = _spd ? _spd->getForwardSpeed()      : 150;
+    float     cthr = _nav ? _nav->getTagDistThreshold()  : 1200.0f;
+
+    char buf[200];
+    int n = snprintf(buf, sizeof(buf),
+        "{\"cfg\":1,\"spd\":%d,\"dmin\":%d,\"alpha\":%.2f,\"beta\":%.2f,"
+        "\"mgap\":%d,\"bstr\":%.2f,\"cthr\":%d,\"fard\":%d}",
+        spd,
+        (int)cfg.dmin,
+        cfg.alpha,
+        cfg.beta,
+        cfg.minGapSize,
+        _biasStrength,
+        (int)cthr,
+        (int)cfg.farDistance);
+
+    _txChar->setValue((uint8_t*)buf, (size_t)n);
+    _txChar->notify();
+
+    Serial.print("[BLE] config sent: "); Serial.println(buf);
 }

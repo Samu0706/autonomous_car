@@ -38,6 +38,11 @@ struct FGMConfig {
     // Maximaler Lenkausschlag (passend zu SteeringController)
     float maxSteerAngle = 30.0f;   // ° – ±30
 
+    // Übereinstimmend mit LidarProcessingConfig::farDistance.
+    // Punkte auf diesem Wert (kein Echo → d=0-Ersatz) zählen als blockiert,
+    // nicht als Freiraum – verhindert Phantom-Lücken bei fehlendem LiDAR-Signal.
+    float farDistance = 9000.0f;
+
     // --- NEU: Disparity Extender ---
     // Bei jedem Tiefensprung zwischen Nachbarpunkten wird die nähere Seite
     // künstlich um einen Sicherheitsradius aufgebläht, damit das Auto nicht

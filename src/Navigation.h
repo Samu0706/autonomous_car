@@ -42,7 +42,8 @@ public:
     void updateCamera();
 
     // Einstellbarer Tag-Abstandsschwellwert (Standard 1.2 m)
-    void     setTagDistThreshold(float mm) { _distThresholdMm = mm; }
+    void     setTagDistThreshold(float mm)  { _distThresholdMm = mm; }
+    float    getTagDistThreshold()   const  { return _distThresholdMm; }
 
     // ── Getter für Telemetrie ──────────────────────────────────────
     float    getCurrentAngle()   const;

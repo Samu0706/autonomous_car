@@ -59,6 +59,10 @@ private:
 
     void handleCommand(const char* cmd);
 
+    // Sendet aktuellen Konfigurationsstand als JSON-Notification an den Client.
+    // Wird einmalig ~500 ms nach Verbindungsaufbau aufgerufen (in update()).
+    void sendConfig();
+
     FollowTheGap*         _fgm        = nullptr;
     VehicleStateMachine*  _vsm        = nullptr;
     SpeedController*      _spd        = nullptr;
@@ -72,7 +76,11 @@ private:
     char                  _cmdBuf[64] = {};
     volatile bool         _cmdReady   = false;
 
-    char                  _lastCmd    = '-';
-    bool                  _connected  = false;
+    char                  _lastCmd      = '-';
+    bool                  _connected    = false;
     float                 _biasStrength = 0.4f;    // Stärke für L/R/F-Befehle
+
+    // Config-Sync: einmalig nach Verbindungsaufbau senden
+    volatile bool         _sendConfig   = false;
+    unsigned long         _connectedMs  = 0;
 };

@@ -30,8 +30,9 @@ public:
     void stop();
     void setForwardSpeed(int pwm);
 
-    DriveDirection getDirection() const { return _dir; }
-    bool           isMoving()     const { return _dir != DriveDirection::STOPPED; }
+    DriveDirection getDirection()    const { return _dir; }
+    bool           isMoving()        const { return _dir != DriveDirection::STOPPED; }
+    int            getForwardSpeed() const { return _cfg.speedForward; }
 
 private:
     void setMotor(uint8_t dir, int pwm);

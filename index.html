@@ -600,6 +600,13 @@ header h1 {
     <input type="range" id="p-cthr" min="300" max="3000" step="50" value="1200">
     <span class="param-val" id="p-cthr-v">1200</span>
 
+    <hr class="param-divider">
+
+    <!-- Fix A -->
+    <label>farDistance (mm)</label>
+    <input type="range" id="p-fard" min="500" max="15000" step="100" value="9000">
+    <span class="param-val" id="p-fard-v">9000</span>
+
   </div>
 </div>
 
@@ -692,6 +699,8 @@ function onTelemetry(evt) {
   const text = new TextDecoder().decode(evt.target.value);
   try {
     const d = JSON.parse(text);
+    // Config-Paket (ESP32 sendet beim Verbinden + auf GET-Befehl)
+    if (d.cfg === 1) { applyConfig(d); return; }
     if (d.a  !== undefined) updateGauge(parseFloat(d.a));
     if (d.s  !== undefined) document.getElementById('t-state').textContent = d.s;
     if (d.rp !== undefined) document.getElementById('t-raw').textContent   = d.rp;
@@ -699,6 +708,34 @@ function onTelemetry(evt) {
     updateGaps(d.g || []);
     if (d.ci !== undefined) updateCamera(d.ci, d.ct, d.cc);
   } catch (_) {}
+}
+
+// ── Config-Sync: Slider auf ESP32-Werte setzen ───────
+function applyConfig(cfg) {
+  function setSlider(id, val, dec) {
+    const el = document.getElementById(id);
+    if (!el || val === undefined) return;
+    el.value = val;
+    const dv = document.getElementById(id + '-v');
+    if (dv) dv.textContent = dec > 0 ? parseFloat(val).toFixed(dec) : String(Math.round(val));
+  }
+  setSlider('p-spd',  cfg.spd,   0);
+  setSlider('p-dmin', cfg.dmin,  0);
+  setSlider('p-alpha',cfg.alpha, 2);
+  setSlider('p-beta', cfg.beta,  2);
+  setSlider('p-bstr', cfg.bstr,  2);
+  setSlider('p-cthr', cfg.cthr,  0);
+  setSlider('p-fard', cfg.fard,  0);
+  // Parameter-Sektion kurz aufklappen damit Sync sichtbar ist
+  const grid = document.getElementById('param-grid');
+  if (grid && grid.classList.contains('hidden')) {
+    grid.classList.remove('hidden');
+    document.getElementById('param-toggle').classList.add('open');
+    setTimeout(() => {
+      grid.classList.add('hidden');
+      document.getElementById('param-toggle').classList.remove('open');
+    }, 2000);
+  }
 }
 
 // ── Lücken-Visualisierung ────────────────────────────
@@ -882,6 +919,7 @@ const PARAMS = [
   { id: 'p-beta',  key: 'BETA',  dec: 2,  debounce: 300 },
   { id: 'p-bstr',  key: 'BSTR',  dec: 2,  debounce: 300 },
   { id: 'p-cthr',  key: 'CTHR',  dec: 0,  debounce: 300 },
+  { id: 'p-fard',  key: 'FARD',  dec: 0,  debounce: 300 },
 ];
 
 PARAMS.forEach(({ id, key, dec, debounce }) => {
