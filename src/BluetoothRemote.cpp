@@ -50,9 +50,10 @@ void BluetoothRemote::begin(FollowTheGap*        fgm,
 // UPDATE  –  Arduino-Loop-Kontext
 // =============================
 void BluetoothRemote::update() {
-    // Config einmalig 500 ms nach Verbindungsaufbau senden (gibt Client Zeit
-    // zum Aktivieren der Notifications bevor das Paket eintrifft).
-    if (_sendConfig && _connected && (millis() - _connectedMs >= 500)) {
+    // Config einmalig 3000 ms nach Verbindungsaufbau senden (Fallback falls
+    // die Website kein GET sendet – Web-Bluetooth braucht bis zu ~2s für
+    // startNotifications(), daher großzügiger Puffer).
+    if (_sendConfig && _connected && (millis() - _connectedMs >= 3000)) {
         _sendConfig = false;
         sendConfig();
     }

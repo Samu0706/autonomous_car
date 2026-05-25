@@ -568,15 +568,15 @@ header h1 {
 
     <!-- Geschwindigkeit -->
     <label>Speed</label>
-    <input type="range" id="p-spd" min="0" max="255" step="1" value="150">
-    <span class="param-val" id="p-spd-v">150</span>
+    <input type="range" id="p-spd" min="0" max="255" step="1" value="22">
+    <span class="param-val" id="p-spd-v">22</span>
 
     <hr class="param-divider">
 
     <!-- FGM -->
     <label>dmin (mm)</label>
-    <input type="range" id="p-dmin" min="300" max="6000" step="50" value="4000">
-    <span class="param-val" id="p-dmin-v">4000</span>
+    <input type="range" id="p-dmin" min="300" max="6000" step="50" value="1500">
+    <span class="param-val" id="p-dmin-v">1500</span>
 
     <label>Alpha</label>
     <input type="range" id="p-alpha" min="0" max="1" step="0.05" value="0.4">
@@ -667,6 +667,11 @@ async function doConnect() {
     txChar.addEventListener('characteristicvaluechanged', onTelemetry);
 
     setConnected(true);
+
+    // Aktuelle Parameter vom ESP32 anfordern.
+    // Der Listener ist jetzt registriert → Antwort wird sicher empfangen.
+    setTimeout(() => send('GET'), 300);
+
   } catch (err) {
     if (err.name !== 'NotFoundError') setStatus('Fehler: ' + err.message);
     else                              setStatus('Getrennt');
