@@ -614,6 +614,13 @@ header h1 {
     <input type="range" id="p-gain" min="0.5" max="3.0" step="0.05" value="1.5">
     <span class="param-val" id="p-gain-v">1.50</span>
 
+    <hr class="param-divider">
+
+    <!-- Servo-Trim -->
+    <label>Servo-Trim (°)</label>
+    <input type="range" id="p-trim" min="-15" max="15" step="0.5" value="0">
+    <span class="param-val" id="p-trim-v">0.0</span>
+
   </div>
 </div>
 
@@ -739,6 +746,7 @@ function applyConfig(cfg) {
   setSlider('p-cthr', cfg.cthr,  0);
   setSlider('p-fard', cfg.fard,  0);
   setSlider('p-gain', cfg.gain,  2);
+  setSlider('p-trim', cfg.trim,  1);
   // Parameter-Sektion kurz aufklappen damit Sync sichtbar ist
   const grid = document.getElementById('param-grid');
   if (grid && grid.classList.contains('hidden')) {
@@ -934,6 +942,7 @@ const PARAMS = [
   { id: 'p-cthr',  key: 'CTHR',  dec: 0,  debounce: 300 },
   { id: 'p-fard',  key: 'FARD',  dec: 0,  debounce: 300 },
   { id: 'p-gain',  key: 'GAIN',  dec: 2,  debounce: 300 },
+  { id: 'p-trim',  key: 'TRIM',  dec: 1,  debounce: 100 },
 ];
 
 PARAMS.forEach(({ id, key, dec, debounce }) => {
