@@ -220,6 +220,11 @@ void BluetoothRemote::handleCommand(const char* cmd) {
             FGMConfig cfg = _fgm->getConfig();
             cfg.farDistance = constrain(fval, 1000.0f, 15000.0f);
             _fgm->setConfig(cfg);
+
+        } else if (strcmp(key, "GAIN") == 0) {
+            FGMConfig cfg = _fgm->getConfig();
+            cfg.steerGain = constrain(fval, 0.5f, 3.0f);
+            _fgm->setConfig(cfg);
         }
         return;
     }
@@ -283,10 +288,10 @@ void BluetoothRemote::sendConfig() {
     int       spd  = _spd ? _spd->getForwardSpeed()      : 150;
     float     cthr = _nav ? _nav->getTagDistThreshold()  : 1200.0f;
 
-    char buf[200];
+    char buf[220];
     int n = snprintf(buf, sizeof(buf),
         "{\"cfg\":1,\"spd\":%d,\"dmin\":%d,\"alpha\":%.2f,\"beta\":%.2f,"
-        "\"mgap\":%d,\"bstr\":%.2f,\"cthr\":%d,\"fard\":%d}",
+        "\"mgap\":%d,\"bstr\":%.2f,\"cthr\":%d,\"fard\":%d,\"gain\":%.2f}",
         spd,
         (int)cfg.dmin,
         cfg.alpha,
@@ -294,7 +299,8 @@ void BluetoothRemote::sendConfig() {
         cfg.minGapSize,
         _biasStrength,
         (int)cthr,
-        (int)cfg.farDistance);
+        (int)cfg.farDistance,
+        cfg.steerGain);
 
     _txChar->setValue((uint8_t*)buf, (size_t)n);
     _txChar->notify();

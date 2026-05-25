@@ -38,6 +38,12 @@ struct FGMConfig {
     // Maximaler Lenkausschlag (passend zu SteeringController)
     float maxSteerAngle = 30.0f;   // ° – ±30
 
+    // Lenkwinkel-Multiplikator: erhöht die Korrektursensitivität ohne
+    // den mechanischen Maximalausschlag zu verändern.
+    // 1.0 = linear, 1.5 = 50% aggressiver, Clamp auf ±maxSteerAngle bleibt.
+    // BLE-tunable via GAIN=<wert>. Typisch: 1.0 – 2.5.
+    float steerGain = 1.5f;
+
     // Übereinstimmend mit LidarProcessingConfig::farDistance.
     // Punkte auf diesem Wert (kein Echo → d=0-Ersatz) zählen als blockiert,
     // nicht als Freiraum – verhindert Phantom-Lücken bei fehlendem LiDAR-Signal.

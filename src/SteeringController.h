@@ -23,6 +23,12 @@ struct SteeringConfig {
     int     servoCenter   = 90;    // Servo-Winkel für Geradeausfahrt
     int     maxAngle_deg  = 30;    // Maximaler Lenkwinkel (mechanisch)
 
+    // Servo-Trim: physischen Geradeaus-Versatz korrigieren.
+    // Positiv = Neutral nach links  (korrigiert Rechtsdrall)
+    // Negativ = Neutral nach rechts (korrigiert Linksdrall)
+    // Faustregel: 1 Einheit ≈ 1° Servowinkel.  Typischer Bereich: −10 … +10.
+    float   trimOffset_deg = 0.0f;
+
     // Ratenfilter: max. Winkeländerung pro loop()-Aufruf (0 = deaktiviert)
     float   maxRatePerCall = 0.0f;
 

@@ -20,6 +20,7 @@ class Navigation; // forward declaration
  *                   MGAP=3    – FGM Min. Lückenpunkte
  *                   BSTR=0.4  – Bias-Stärke für L/R/F-Befehle
  *                   CTHR=1200 – Kamera-Tag Abstandsschwellwert (mm)
+ *                   GAIN=1.5  – FGM Lenkwinkel-Multiplikator (0.5–3.0)
  *
  * Sende-Protokoll (ESP32 → Web, JSON-Notification, max. 200 ms):
  *   {"a":-12.3,"s":"DRIVING","rp":800,"fp":360}

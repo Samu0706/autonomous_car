@@ -33,7 +33,7 @@ void SteeringController::setAngle(float vehicleAngle_deg) {
 
 void SteeringController::center() {
     _currentAngle = 0.0f;
-    _servo.write(_cfg.servoCenter);
+    _servo.write((int)(_cfg.servoCenter + _cfg.trimOffset_deg));
 }
 
 // ---- Private ----
@@ -48,6 +48,6 @@ float SteeringController::applyRateFilter(float target) {
 }
 
 int SteeringController::angleToServo(float angle) {
-    // +angle = rechts → Servo sinkt unter Mitte; -angle = links → Servo steigt
-    return (int)(_cfg.servoCenter - angle);
+    // +angle = rechts → Servo sinkt; trimOffset_deg korrigiert physischen Drall
+    return (int)(_cfg.servoCenter + _cfg.trimOffset_deg - angle);
 }

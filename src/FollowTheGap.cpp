@@ -360,11 +360,10 @@ float FollowTheGap::lidarAngleToSteering(float lidarAngle) const {
     // Offset zu 180° (geradeaus): rechts (+), links (-)
     float delta = lidarAngle - 180.0f;
 
-    // Linear auf ±maxSteerAngle mappen
-    // Frontbereich ist ±90° → Skalierung: delta / 90 * maxSteerAngle
-    float steer = (delta / 90.0f) * _cfg.maxSteerAngle;
+    // Linear auf ±maxSteerAngle mappen, dann steerGain anwenden.
+    // Clamp auf ±maxSteerAngle bleibt – mechanischer Ausschlag wird nie überschritten.
+    float steer = (delta / 90.0f) * _cfg.maxSteerAngle * _cfg.steerGain;
 
-    // Begrenzung (Sicherheit)
     if (steer >  _cfg.maxSteerAngle) steer =  _cfg.maxSteerAngle;
     if (steer < -_cfg.maxSteerAngle) steer = -_cfg.maxSteerAngle;
 
